@@ -1,0 +1,57 @@
+<?php
+
+return [
+    'failure_save_user' => [
+        'code'          => 41900,
+        'status_code'   => 422,
+        'message'       => "Unable to save user. Please try again."],
+    'failure_delete_user'=> [
+        'code'          => 41901,
+        'status_code'   => 422,
+        'message'       => "Unable to delete user with ID :id. Please try again."],
+    'user_not_found' => [
+        'code'          => 41902,
+        'status_code'   => 422,
+        'message'       => "User :email not found."],    
+    'token_invalid' => [
+        'code'          => 41903,
+        'status_code'   => 422,
+        'message'       => "Invalid token."],    
+    'token_expired' => [
+        'code'          => 41904,
+        'status_code'   => 422,
+        'message'       => "Token was expired."],    
+    'old_password_incorrect' => [
+        'code'          => 41905,
+        'status_code'   => 422,
+        'message'       => "Incorrect old password."],   
+    'reset_password_request' => 'We have e-mailed your password reset link!', 
+    'account_inactive' => [
+        'code'          => 41906,
+        'status_code'   => 422,
+        'message'       => "Account is Inactive, Activate your account first."],  
+    'account_suspended' => [
+        'code'          => 41907,
+        'status_code'   => 422,
+        'message'       => "User is suspended, Call your administrator."],  
+    'account_deleted' => [
+        'code'          => 41908,
+        'status_code'   => 422,
+        'message'       => "User is deleted, Call your administrator."],  
+    'failed_to_suspend' => [
+        'code'          => 41909,
+        'status_code'   => 422,
+        'message'       => "Failed to suspend user with ID :id."],
+    'failed_to_activate' => [
+        'code'          => 41910,
+        'status_code'   => 422,
+        'message'       => "Failed to activate user with ID :id."],
+    'user_only_one' => [
+        'code'          => 41911,
+        'status_code'   => 422,
+        'message'       => "Cannot delete this user. Entity require at least 1 user active."],    
+    'failure_delete_user_not_suspend' => [
+        'code'          => 40401,
+        'status_code'   => 422,
+        'message'       => "Unable to delete user with ID :id. User Not Suspend."],
+];
