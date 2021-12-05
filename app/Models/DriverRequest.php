@@ -17,6 +17,7 @@ class DriverRequest extends Model
 		'note',
 		'purpose_time',
 		'status',
+        'requested_by',
 		'created_by',
         'updated_by',
 	];
