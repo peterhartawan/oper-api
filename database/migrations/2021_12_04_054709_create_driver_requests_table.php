@@ -17,6 +17,7 @@ class CreateDriverRequestsTable extends Migration
             $table->increments('id');
             $table->integer('enterprise_id');
             $table->integer('place_id');
+            $table->unsignedInteger('number_of_drivers');
             $table->text('note');
             $table->timestamp('purpose_time');
             $table->integer('status');

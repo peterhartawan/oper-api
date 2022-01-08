@@ -14,6 +14,7 @@ class DriverRequest extends Model
 		'id',
 		'enterprise_id',
 		'place_id',
+        'number_of_drivers',
 		'note',
 		'purpose_time',
 		'status',
@@ -21,4 +22,14 @@ class DriverRequest extends Model
 		'created_by',
         'updated_by',
 	];
+
+    public function enterprise()
+    {
+        return $this->hasOne(ClientEnterprise::class, 'identerprise', 'enterprise_id');
+    }
+
+    public function place()
+    {
+        return $this->hasOne(Places::class, 'idplaces', 'place_id');
+    }
 }

@@ -11,7 +11,7 @@ use DB;
 
 class DriverRequestController extends Controller
 {
-    const ORDER_BY_FIELD = ['enterprise_id', 'place_id', 'status', 'purpose_time'];
+    const ORDER_BY_FIELD = ['enterprise_id', 'place_id', 'number_of_drivers', 'status', 'purpose_time'];
 
     CONST STATUS_CANCELED = 'CANCELED';
     CONST STATUS_REQUESTED = 'REQUESTED';
@@ -25,6 +25,9 @@ class DriverRequestController extends Controller
     /**
      * Get Driver Request list
      *
+     * @param [int] enterprise_id
+     * @param [int] place_id
+     * @param [int] number_of_drivers
      * @param [date] purpose_time
      * @param [int] status
      * @param [string] order_by
@@ -36,7 +39,8 @@ class DriverRequestController extends Controller
     public function index(Request $request)
     {
         $request->validate([
-            'purpose_time' => 'sometimes|date_format:Y-m-d H:i:s',
+            'number_of_drivers' => 'sometimes|numeric|min:1',
+            'purpose_time' => 'sometimes',
             'status' => 'sometimes|in:' . implode(',', self::STATUS),
             'order_by' => 'sometimes|in:' . implode(',', self::ORDER_BY_FIELD),
             'order_type' => 'sometimes|in:asc,desc',
@@ -47,6 +51,7 @@ class DriverRequestController extends Controller
         // Query param
         $enterprise_id = $request->query('enterprise_id');
         $place_id = $request->query('place_id');
+        $number_of_drivers = $request->query('number_of_drivers');
         $purpose_time = $request->query('purpose_time');
         $status = $request->query('status');
         $order_by = $request->has('order_by') ? $request->query('order_by') : 'id';
@@ -57,6 +62,7 @@ class DriverRequestController extends Controller
             'id',
             'enterprise_id',
             'place_id',
+            'number_of_drivers',
             'note',
             'purpose_time',
             'status'
@@ -68,14 +74,17 @@ class DriverRequestController extends Controller
         if (!empty($place_id)) {
             $data = $data->where('place_id', '=', $place_id);
         }
+        if (!empty($number_of_drivers)) {
+            $data = $data->where('number_of_drivers', '=', $number_of_drivers);
+        }
         if (!empty($purpose_time)) {
-            $data = $data->where('purpose_time', '=', $purpose_time);
+            $data = $data->where('purpose_time', 'like', '%'.$purpose_time.'%');
         }
         if (!empty($status)) {
             $data = $data->where('status', '=', $status);
         }
 
-        $data = $data->paginate($limit);
+        $data = $data->with('enterprise', 'place')->paginate($limit);
 
         return Response::success($data);
     }
@@ -88,7 +97,7 @@ class DriverRequestController extends Controller
      */
     public function show($id)
     {
-        return Response::success(DriverRequest::where('id', $id)->first());
+        return Response::success(DriverRequest::where('id', $id)->with('enterprise', 'place')->first());
     }
 
     /**
@@ -104,6 +113,7 @@ class DriverRequestController extends Controller
         $request->validate([
             'enterprise_id' => 'required|exists:client_enterprise,identerprise',
             'place_id' => 'required|exists:places,idplaces',
+            'number_of_drivers' => 'required|numeric|min:1',
             'note' => 'required',
             'purpose_time' => 'required|date_format:Y-m-d H:i:s',
         ]);
@@ -114,6 +124,7 @@ class DriverRequestController extends Controller
             $data = DriverRequest::create([
                 'enterprise_id' => $request->get('enterprise_id'),
                 'place_id' => $request->get('place_id'),
+                'number_of_drivers' => $request->get('number_of_drivers'),
                 'note' => $request->get('note'),
                 'purpose_time' => $request->get('purpose_time'),
                 'status' => self::STATUS[self::STATUS_REQUESTED],
@@ -128,7 +139,6 @@ class DriverRequestController extends Controller
 
         return Response::success($data);
     }
-
 
     /**
      * Create Driver Request
@@ -145,6 +155,7 @@ class DriverRequestController extends Controller
             'id' => 'required|exists:driver_requests',
             'enterprise_id' => 'required|exists:client_enterprise,identerprise',
             'place_id' => 'required|exists:places,idplaces',
+            'number_of_drivers' => 'required|numeric|min:1',
             'note' => 'required',
             'purpose_time' => 'required|date_format:Y-m-d H:i:s',
         ]);
@@ -156,6 +167,7 @@ class DriverRequestController extends Controller
                 ->update([
                     'enterprise_id' => $request->get('enterprise_id'),
                     'place_id' => $request->get('place_id'),
+                    'number_of_drivers' => $request->get('number_of_drivers'),
                     'note' => $request->get('note'),
                     'purpose_time' => $request->get('purpose_time'),
                     'status' => self::STATUS[self::STATUS_REQUESTED],
