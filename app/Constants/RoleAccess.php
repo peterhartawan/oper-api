@@ -65,6 +65,7 @@ class RoleAccess
         "EmployeePositionController" => "all",
         "TaskTemplateController" => "all",
         "VehicleBrandController" => "all",
+        "DriverRequestController" => "all"
     ];
 
     const ENTERPRISE = [
