@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClientEnterprise;
 use App\Models\DriverRequest;
 use Illuminate\Http\Request;
 use App\Services\Response;
@@ -13,12 +14,12 @@ class DriverRequestController extends Controller
 {
     const ORDER_BY_FIELD = ['enterprise_id', 'place_id', 'number_of_drivers', 'status', 'purpose_time'];
 
-    CONST STATUS_CANCELED = 'CANCELED';
-    CONST STATUS_REQUESTED = 'REQUESTED';
-    CONST STATUS_FILLED = 'FILLED';
+    const STATUS_CANCELED = 'CANCELED';
+    const STATUS_REQUESTED = 'REQUESTED';
+    const STATUS_FILLED = 'FILLED';
     const STATUS = [
         self::STATUS_CANCELED => -1,
-        self::STATUS_REQUESTED=> 1,
+        self::STATUS_REQUESTED => 1,
         self::STATUS_FILLED => 2,
     ];
 
@@ -38,6 +39,7 @@ class DriverRequestController extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->guard('api')->user();
         $request->validate([
             'number_of_drivers' => 'sometimes|numeric|min:1',
             'purpose_time' => 'sometimes',
@@ -56,7 +58,7 @@ class DriverRequestController extends Controller
         $status = $request->query('status');
         $order_by = $request->has('order_by') ? $request->query('order_by') : 'id';
         $order_type = $request->has('order_type') ? $request->query('order_type') : 'asc';
-        $limit = $request->has('limit') ? (int)$request->query('limit') : Constant::LIMIT_PAGINATION;
+        $limit = $request->has('size') ? (int)$request->query('size') : Constant::LIMIT_PAGINATION;
 
         $data = DriverRequest::select(
             'id',
@@ -68,9 +70,12 @@ class DriverRequestController extends Controller
             'status'
         )->orderBy($order_by, $order_type);
 
-        if (!empty($enterprise_id)) {
+        if ($user->idrole == Constant::ROLE_VENDOR && !empty($enterprise_id)) {
             $data = $data->where('enterprise_id', '=', $enterprise_id);
+        } else if ($user->idrole != Constant::ROLE_VENDOR) {
+            $data = $data->where('enterprise_id', '=', $user->client_enterprise_identerprise);
         }
+
         if (!empty($place_id)) {
             $data = $data->where('place_id', '=', $place_id);
         }
@@ -78,7 +83,7 @@ class DriverRequestController extends Controller
             $data = $data->where('number_of_drivers', '=', $number_of_drivers);
         }
         if (!empty($purpose_time)) {
-            $data = $data->where('purpose_time', 'like', '%'.$purpose_time.'%');
+            $data = $data->where('purpose_time', 'like', '%' . $purpose_time . '%');
         }
         if (!empty($status)) {
             $data = $data->where('status', '=', $status);
