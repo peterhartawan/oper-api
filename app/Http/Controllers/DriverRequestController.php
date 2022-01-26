@@ -70,8 +70,17 @@ class DriverRequestController extends Controller
             'status'
         )->orderBy($order_by, $order_type);
 
-        if ($user->idrole == Constant::ROLE_VENDOR && !empty($enterprise_id)) {
-            $data = $data->where('enterprise_id', '=', $enterprise_id);
+        if ($user->idrole == Constant::ROLE_VENDOR) {
+            $vendorEnterprises = $user->vendor->enterprises;
+            $vendorEnterprisesIds = [];
+            foreach ($vendorEnterprises as $k => $v) {
+                array_push($vendorEnterprisesIds, $v->identerprise);
+            }
+            $data = $data->wherein('enterprise_id', $vendorEnterprisesIds);
+
+            if (!empty($enterprise_id)) {
+                $data = $data->where('enterprise_id', '=', $enterprise_id);
+            }
         } else if ($user->idrole != Constant::ROLE_VENDOR) {
             $data = $data->where('enterprise_id', '=', $user->client_enterprise_identerprise);
         }

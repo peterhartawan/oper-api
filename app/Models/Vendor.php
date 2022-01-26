@@ -12,11 +12,11 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class Vendor
- * 
+ *
  * @property int $idvendor
  * @property string $name
  * @property string $desc
- * 
+ *
  * @property \Illuminate\Database\Eloquent\Collection $dispatchers
  * @property \Illuminate\Database\Eloquent\Collection $users
  *
@@ -25,7 +25,7 @@ use App\Traits\NullToEmptyString;
 class Vendor extends Model
 {
 	use NullToEmptyString;
-	
+
 	protected $table = 'vendor';
 	protected $primaryKey = 'idvendor';
 	public $timestamps = false;
@@ -54,7 +54,6 @@ class Vendor extends Model
 	public function clients()
 	{
 		return $this->belongsToMany('App\Models\VendorHandleClient', 'vendor_handle_client', 'vendor_idvendor', 'client_enterprise_identerprise');
-
 	}
 
 	public function dispatchers()
@@ -71,4 +70,9 @@ class Vendor extends Model
 	{
 		return $this->hasMany(\App\User::class, 'vendor_idvendor')->where('idrole', 2);
 	}
+
+    public function enterprises()
+    {
+        return $this->hasMany(ClientEnterprise::class, 'vendor_idvendor', 'idvendor');
+    }
 }
