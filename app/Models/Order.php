@@ -7,12 +7,12 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class Order
- * 
+ *
  * @property int $idorder
  * @property int $order_status_idorder_status
  * @property int $dispatcher_iddispatcher
  * @property int $task_template_task_template_id
- * 
+ *
  * @property \App\Models\Dispatcher $dispatcher
  * @property \App\Models\OrderStatus $order_status
  * @property \App\Models\TaskTemplate $task_template
@@ -41,27 +41,27 @@ class Order extends Model
 	protected $fillable = [
 		'idorder',
 		'trx_id',
-		'task_template_task_template_id', 
-		'client_enterprise_identerprise', 
-		'client_userid', 
-		'driver_userid', 
-		'dispatcher_userid', 
-		'status', 
-		'booking_time', 
-		'origin_latitude', 
-		'origin_longitude', 
+		'task_template_task_template_id',
+		'client_enterprise_identerprise',
+		'client_userid',
+		'driver_userid',
+		'dispatcher_userid',
+		'status',
+		'booking_time',
+		'origin_latitude',
+		'origin_longitude',
 		'user_fullname',
 		'user_phonenumber',
 		'vehicle_owner',
-		'destination_latitude', 
-		'destination_longitude', 
-		'client_vehicle_license', 
-		'vehicle_brand_id', 
-		'vehicle_type', 
-		'vehicle_transmission', 
+		'destination_latitude',
+		'destination_longitude',
+		'client_vehicle_license',
+		'vehicle_brand_id',
+		'vehicle_type',
+		'vehicle_transmission',
 		'vehicle_year',
 		'vehicle_color',
-		'message', 
+		'message',
 		'order_type_idorder_type',
 		'order_status',
 		'created_by',
@@ -106,10 +106,14 @@ class Order extends Model
 	{
 	  return $this->belongsTo(\App\Models\VehicleBrand::class, 'vehicle_brand_id');
 	}
-	
+
 	public function employee()
 	{
 		return $this->belongsTo(\App\Models\Employee::class, 'employee_userid', 'users_id')->with(["user", "employee_position"]);
 	}
 
+    public function tracking_task()
+    {
+        return $this->belongsTo(\App\Models\TrackingTask::class, 'idorder', 'idorder');
+    }
 }

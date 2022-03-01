@@ -12,7 +12,7 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class Driver
- * 
+ *
  * @property int $iddriver
  * @property string $email
  * @property string $password
@@ -22,7 +22,7 @@ use App\Traits\NullToEmptyString;
  * @property int $drivertype_iddrivertype
  * @property int $dispatcher_iddispatcher
  * @property int $dispatcher_vendor_idvendor
- * 
+ *
  * @property \App\Models\Dispatcher $dispatcher
  * @property \App\Models\Drivertype $drivertype
  * @property \Illuminate\Database\Eloquent\Collection $orders
@@ -32,7 +32,8 @@ use App\Traits\NullToEmptyString;
 class Driver extends Model
 {
 	use NullToEmptyString;
-	
+
+    protected $connection = 'mysql';
 	protected $guarded = [];
 	protected $table = 'driver';
 	protected $primaryKey = 'iddriver';

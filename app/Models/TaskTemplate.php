@@ -12,10 +12,10 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class TaskTemplate
- * 
+ *
  * @property int $task_template_id
  * @property string $taskname
- * 
+ *
  * @property \Illuminate\Database\Eloquent\Collection $orders
  * @property \Illuminate\Database\Eloquent\Collection $tasks
  *
@@ -25,6 +25,7 @@ class TaskTemplate extends Model
 {
 	use NullToEmptyString;
 
+    protected $connection = 'mysql';
 	protected $table = 'task_template';
 	protected $primaryKey = 'task_template_id';
 	public $timestamps = true;

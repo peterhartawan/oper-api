@@ -12,11 +12,11 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class Dispatcher
- * 
+ *
  * @property int $iddispatcher
  * @property string $name
  * @property int $vendor_idvendor
- * 
+ *
  * @property \App\Models\Vendor $vendor
  * @property \Illuminate\Database\Eloquent\Collection $dispatcher_handle_companies
  * @property \Illuminate\Database\Eloquent\Collection $drivers
@@ -28,7 +28,8 @@ use App\Traits\NullToEmptyString;
 class Dispatcher extends Model
 {
 	use NullToEmptyString;
-	
+
+    protected $connection = 'mysql';
 	protected $table = 'dispatcher';
 	protected $primaryKey = 'iddispatcher';
 	public $timestamps = false;

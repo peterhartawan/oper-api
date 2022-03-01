@@ -12,6 +12,9 @@ class User extends Authenticatable
 {
     use Notifiable, HasApiTokens;
 
+    //locking the connection for cross-server queries
+    protected $connection = 'mysql';
+
     protected $casts = [
 		'idrole' => 'int',
 		'vendor_idvendor' => 'int',

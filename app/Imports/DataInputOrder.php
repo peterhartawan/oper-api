@@ -129,10 +129,12 @@ class DataInputOrder implements ToCollection, WithChunkReading
                     continue;
                 }
 
+                $order_connection = Order::on('mysql');
+
                 switch ($idRole) {
                     case Constant::ROLE_ENTERPRISE:
                         $client_userid = $userId;
-        
+
                         if ($useridenterprise->id_type == Constant::ENTERPRISE_TYPE_REGULAR) {
                             $orderType = Constant::ORDER_TYPE_ENTERPRISE;
                         } else if ($useridenterprise->id_type == Constant::ENTERPRISE_TYPE_PLUS) {
@@ -141,21 +143,24 @@ class DataInputOrder implements ToCollection, WithChunkReading
                             $orderType = Constant::ORDER_TYPE_ENTERPRISE;
                         }
                         break;
-        
+
                     case Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER:
                         $orderType = Constant::ORDER_TYPE_ENTERPRISE;
                         break;
-        
+
                     case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
                         $orderType = Constant::ORDER_TYPE_ENTERPRISE_PLUS;
+                        if($identerprise == env('CARS24_IDENTERPRISE')){
+                            $order_connection = Order::on('cars24');
+                        }
                         break;
-                    
+
                     default:
                         throw new ApplicationException("errors.access_denied");
                         break;
                 }
 
-                $order = Order::create([
+                $order = $order_connection->create([
                     'trx_id'                            => $trxId,
                     'task_template_task_template_id'    => $task_template_id,
                     'client_enterprise_identerprise'    => $identerprise,
@@ -199,12 +204,12 @@ class DataInputOrder implements ToCollection, WithChunkReading
                 } else {
                     $failure++;
                 }
-                // notifikasi email for client 
+                // notifikasi email for client
                 // if ($orderType != Constant::ORDER_TYPE_ONDEMAND) {
                 //     $emails = User::whereIn('idrole', [Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER, Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS])
                 //             ->where('vendor_idvendor', auth()->guard('api')->user()->vendor_idvendor)
                 //             ->get();
-                            
+
                 //     if (count($emails)>0) {
                 //         $orderan =
                 //         [
@@ -239,7 +244,7 @@ class DataInputOrder implements ToCollection, WithChunkReading
                     Session::put('jum_insert', "ada");
                     DB::commit();
                 }
-                
+
                 return [
                     'status'    => true,
                     'success'   => $success,

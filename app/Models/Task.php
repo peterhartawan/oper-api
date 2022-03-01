@@ -7,11 +7,11 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class Task
- * 
+ *
  * @property int $idtask
  * @property string $name
  * @property string $description
- * 
+ *
  * @property \Illuminate\Database\Eloquent\Collection $task_template_has_tasks
  *
  * @package App\Models
@@ -20,6 +20,7 @@ class Task extends Model
 {
 	use NullToEmptyString;
 
+    protected $connection = 'mysql';
 	protected $table = 'task';
 	protected $primaryKey = 'idtask';
 	public $timestamps = true;
@@ -29,12 +30,12 @@ class Task extends Model
 		'sequence',
 		'task_template_id',
 		'name',
-		'description', 
-		'status', 
-		'is_required', 
-		'is_need_photo', 
-		'is_need_inspector_validation', 
-		'latitude', 
+		'description',
+		'status',
+		'is_required',
+		'is_need_photo',
+		'is_need_inspector_validation',
+		'latitude',
 		'longitude',
 		'created_by',
 		'updated_by',
