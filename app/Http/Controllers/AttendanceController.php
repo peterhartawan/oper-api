@@ -29,9 +29,9 @@ use Illuminate\Support\Facades\Log;
 
 class AttendanceController extends Controller
 {
-    
+
     public function clock_in(Request $request)
-    {     
+    {
 		Validate::request($request->all(), [
             'latitude'  => 'nullable|string',
             'longitude' => 'nullable|string',
@@ -79,11 +79,11 @@ class AttendanceController extends Controller
             }else{
                 throw new ApplicationException("attendance.failure_clock_in_setting_lock");
             }
-            
+
 
         }
 
-        
+
 
         $checkAttendance = Attendance::
                         where('users_id', auth()->guard('api')->user()->id)
@@ -119,7 +119,7 @@ class AttendanceController extends Controller
                 if($request->hasfile('photo'))
                 {
                     $path = Storage::putFile("/public/images/attendance", $request->file('photo'));
-                    $attendance->image_url = $path; 
+                    $attendance->image_url = $path;
                 }
                 $attendance->save();
 
@@ -142,7 +142,7 @@ class AttendanceController extends Controller
                 throw new ApplicationException("attendance.failure_save_attendance");
             }
         }
-        
+
     }
 
     public function clock_out(Request $request)
@@ -157,7 +157,7 @@ class AttendanceController extends Controller
                         ->whereNull("clock_out")
                         ->orderBy("clock_in","desc")
                         ->first();
-        
+
         if($attendance){
 
             try {
@@ -174,7 +174,7 @@ class AttendanceController extends Controller
                  if(!empty($attendance->image_url)){
                      $attendance->image_url = Storage::url($attendance->image_url);
                  }
-                 
+
                 $dataraw = '';
                 $reason  = 'Clock out Attendance #';
                 $trxid   = auth()->guard('api')->user()->id;
@@ -193,7 +193,7 @@ class AttendanceController extends Controller
             $checkAttendance = Attendance::
                                 where('users_id', auth()->guard('api')->user()->id)
                                 ->where("clock_in",">=",Carbon::today()->toDateString());
-                                
+
             if($checkAttendance->count() < 1){
                 // if clock in not found, user have to clock in first
                 throw new ApplicationException("attendance.failure_not_yet_clock_in");
@@ -202,14 +202,14 @@ class AttendanceController extends Controller
                 throw new ApplicationException("attendance.failure_already_clockout");
             }
         }
-        
+
     }
 
     public function last_status()
     {
         $attendance = Attendance::where("users_id",auth()->guard('api')->user()->id)
                         ->whereDate("clock_in",Carbon::today()->toDateString())
-                        ->first();     
+                        ->first();
 
         $nextAction = "";
         if(empty($attendance->clock_in)){
@@ -222,7 +222,7 @@ class AttendanceController extends Controller
                 return Response::success(["next_action"=>$nextAction,"last_attendance"=>$attendance2]);
             }else{
                 $nextAction = "clock_in";
-            }                   
+            }
         }else if (!empty($attendance->clock_in) && empty($attendance->clock_out)){
             $nextAction = "clock_out";
         }else{
@@ -253,7 +253,7 @@ class AttendanceController extends Controller
         } elseif ($role_login == Constant::ROLE_EMPLOYEE) {
             return $this->reportingEmployee($request);
         }
-        
+
         //Web Vendor
         if ($role_login == Constant::ROLE_VENDOR || $role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER || $role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS) {
             if ($type == 'driver') {
@@ -292,21 +292,23 @@ class AttendanceController extends Controller
 
         }else{
             if($role_login == Constant::ROLE_VENDOR ) {
-                $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"))
+                $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"), 'client_enterprise.name as nama_enterprise')
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')
                 ->join('driver', 'driver.users_id', '=', 'attendance.users_id')
+                ->join('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
                 ->where('users.vendor_idvendor', auth()->guard('api')->user()->vendor_idvendor)
                 ->orderBy("attendance.id","desc");
 
             } elseif($role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS || $role_login == Constant::ROLE_ENTERPRISE || $role_login == Constant::ROLE_SUPERADMIN) {
-                $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"))
+                $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"),  'client_enterprise.name as nama_enterprise')
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')
                 ->join('driver', 'driver.users_id', '=', 'attendance.users_id')
+                ->join('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
                 ->where('users.client_enterprise_identerprise', auth()->guard('api')->user()->client_enterprise_identerprise)
-                ->orderBy("attendance.id","desc");            
-            }           
+                ->orderBy("attendance.id","desc");
+            }
 
             if($request->query('userid')){
                 $attendances = $attendances->where("attendance.users_id",$request->query('userid'));
@@ -318,7 +320,7 @@ class AttendanceController extends Controller
                 if($request->query('start_date') ){
                     $attendances = $attendances->whereDate('clock_in', '>=', $request->query('start_date'));
                 }
-        
+
                 if($request->query('end_date') ){
                     $attendances = $attendances->whereDate('clock_in', '<=', $request->query('end_date'));
                 }
@@ -326,7 +328,7 @@ class AttendanceController extends Controller
 
         }
         $attendances = $attendances->get();
-        if ($export == Constant::BOOLEAN_TRUE && $request->query('type') == 'driver') {          
+        if ($export == Constant::BOOLEAN_TRUE && $request->query('type') == 'driver') {
             $date       = Carbon::now();
             $userid     = $request->query('userid');
             $month      = $request->query('month');
@@ -343,13 +345,13 @@ class AttendanceController extends Controller
                         $fileexport = Storage::url('file/' . $file_name);
                         return Response::success(["file export" => url($fileexport) ], 'messages.success', [], [], JSON_UNESCAPED_SLASHES);
                     }
-                    
+
             } else {
                 throw new ApplicationException("orders.failure_date_select");
             }
         }
 
-        
+
         $no = 1;
         array_walk($attendances, function (&$v, $k) use ($no) {
             foreach ($v as $item) {
@@ -369,7 +371,7 @@ class AttendanceController extends Controller
                     $item->profile_picture = env('BASE_API') . Storage::url($item->profile_picture);
                 }
             }
-            $no++; 
+            $no++;
         });
 
         $page = $request->page ? $request->page : 1 ;
@@ -377,9 +379,9 @@ class AttendanceController extends Controller
         $all_attendances = collect($attendances);
         $attendances_new = new Paginator($all_attendances->forPage($page, $perPage), $all_attendances->count(), $perPage, $page, [
             'path' => url("attendance/reporting?type=driver")
-        ]); 
+        ]);
         return Response::success($attendances_new);
-        
+
     }
 
      /**
@@ -391,11 +393,11 @@ class AttendanceController extends Controller
      * @param  [Y-m-d] end_date
      * @return [json] attendance object
      */
-    private function reportingEmployee(Request $request){       
+    private function reportingEmployee(Request $request){
         $user       = auth()->guard('api')->user();
-        $export     = $request->query('export');        
+        $export     = $request->query('export');
         $role_login = auth()->guard('api')->user()->idrole ;
-        
+
         if($role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER ) {
             throw new ApplicationException("errors.access_denied");
         }
@@ -410,7 +412,7 @@ class AttendanceController extends Controller
                         ->orderBy("attendance.id","desc");
 
         }else{
-            
+
             if($role_login == Constant::ROLE_VENDOR ) {
                 $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"))
                 ->where('users.status', Constant::STATUS_ACTIVE)
@@ -418,7 +420,7 @@ class AttendanceController extends Controller
                 ->join('employee', 'employee.users_id', '=', 'attendance.users_id')
                 ->where('users.vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor)
                 ->orderBy("attendance.id","desc");
-                
+
             } elseif($role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS || $role_login == Constant::ROLE_ENTERPRISE || $role_login == Constant::ROLE_SUPERADMIN) {
                 $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"))
                 ->where('users.status', Constant::STATUS_ACTIVE)
@@ -426,7 +428,7 @@ class AttendanceController extends Controller
                 ->join('employee', 'employee.users_id', '=', 'attendance.users_id')
                 ->where('users.client_enterprise_identerprise',auth()->guard('api')->user()->client_enterprise_identerprise)
                 ->orderBy("attendance.id","desc");
-            }          
+            }
 
             if($request->query('userid')){
                 $attendances = $attendances->where("attendance.users_id", $request->query('userid'));
@@ -436,7 +438,7 @@ class AttendanceController extends Controller
             }else{
                 if($request->query('start_date')){
                     $attendances = $attendances->whereDate('clock_in', '>=', $request->query('start_date'));
-                }        
+                }
                 if($request->query('end_date')){
                     $attendances = $attendances->whereDate('clock_in', '<=', $request->query('end_date'));
                 }
@@ -464,11 +466,11 @@ class AttendanceController extends Controller
                     }
                 } else {
                     $file_name = "Attendance_report_".$request->query('start_date').".xlsx";
-                    Excel::store(new AttendanceExport($userid, $month, $start_date, $end_date), '/public/file/' . $file_name); 
+                    Excel::store(new AttendanceExport($userid, $month, $start_date, $end_date), '/public/file/' . $file_name);
                     if($attendances->isEmpty()) {
                         throw new ApplicationException("orders.failure_attendance_driver");
                     } else {
-                        $fileexport = Storage::url('file/' . $file_name);        
+                        $fileexport = Storage::url('file/' . $file_name);
                         return Response::success(["file export" => url($fileexport) ], 'messages.success', [], [], JSON_UNESCAPED_SLASHES);
                     }
                 }
@@ -476,7 +478,7 @@ class AttendanceController extends Controller
                 throw new ApplicationException("orders.failure_date_select");
             }
         }
-        
+
         $no = 1;
         array_walk($attendances, function (&$v, $k) use ($no) {
             foreach ($v as $item) {
@@ -503,10 +505,10 @@ class AttendanceController extends Controller
 
         $perPage = $request->query('limit')?? Constant::LIMIT_PAGINATION;
         $all_attendances = collect($attendances);
-        $attendances_new = new Paginator($all_attendances->forPage($page, $perPage), $all_attendances->count(), $perPage, $page); 
+        $attendances_new = new Paginator($all_attendances->forPage($page, $perPage), $all_attendances->count(), $perPage, $page);
         $attendances_new = $attendances_new->setPath(url()->full());
         return Response::success($attendances_new);
-      
+
     }
 
 
@@ -520,9 +522,9 @@ class AttendanceController extends Controller
     {
         $attendance = Attendance::select('users.name as name', 'users.phonenumber as phonenumber', 'users.email as email','driver.*','attendance.*','employee.*')
                         ->leftjoin('users', 'users.id', '=', 'attendance.users_id')
-                        ->leftjoin('driver', 'driver.users_id', '=', 'attendance.users_id')  
-                        ->leftjoin('employee', 'employee.idemployee', '=', 'attendance.users_id')                         
-                        ->where('attendance.id', $id)                    
+                        ->leftjoin('driver', 'driver.users_id', '=', 'attendance.users_id')
+                        ->leftjoin('employee', 'employee.idemployee', '=', 'attendance.users_id')
+                        ->where('attendance.id', $id)
                         ->where('users.status','!=', Constant::STATUS_SUSPENDED)
                         ->first();
 
@@ -534,9 +536,9 @@ class AttendanceController extends Controller
         }
 
         if(empty($attendance)){
-            throw new ApplicationException("errors.entity_not_found", ['entity' => 'Attendance','id' => $id]);            
+            throw new ApplicationException("errors.entity_not_found", ['entity' => 'Attendance','id' => $id]);
         }
-        
+
         return Response::success($attendance);
     }
 

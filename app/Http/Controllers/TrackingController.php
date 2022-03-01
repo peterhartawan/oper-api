@@ -27,15 +27,17 @@ class TrackingController extends Controller
      */
     public function listTrackingTask(Request $request)
     {
-        $idorder     = $request->query('idorder');
-             
-        $trackingtask       = TrackingTask::select('tracking_task.*')
-                            ->join('order','order.idorder','tracking_task.idorder')
-                            ->where('tracking_task.status', Constant::STATUS_ACTIVE);   
+        $idorder                    = $request->query('idorder');
+        $identerprise               = auth()->guard('api')->user()->client_enterprise_identerprise;
 
-        if(!empty($idorder)){        
-            $trackingtask = $trackingtask->where("tracking_task.idorder",$idorder);
-        }          
+        $tracking_task_connection   = $this->switchTrackingTaskConnection($identerprise);
+
+        $trackingtask               = $tracking_task_connection
+                                        ->where('status', Constant::STATUS_ACTIVE);
+
+        if(!empty($idorder)){
+            $trackingtask = $trackingtask->where("idorder",$idorder);
+        }
 
         return Response::success($trackingtask->paginate($request->query('limit') ?? 10));
     }
@@ -48,7 +50,7 @@ class TrackingController extends Controller
                             ->join('attendance','attendance.id','tracking_attendance.idattendance')
                             ->where('tracking_attendance.status', Constant::STATUS_ACTIVE);
 
-        if(!empty($idattendance)){            
+        if(!empty($idattendance)){
             $trackingattendance = $trackingattendance->where("tracking_attendance.idattendance",$idattendance);
         }
 
@@ -58,29 +60,32 @@ class TrackingController extends Controller
     public function store(Request $request)
     {
         Validate::request($request->all(), [
-            'latitude'   => "required|string", 
+            'latitude'   => "required|string",
             'longitude'  => "required|string"
         ]);
 
         $userid = auth()->guard('api')->user()->id;
         $role = auth()->guard('api')->user()->idrole;
+        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
 
-        $driver = Driver::where("users_id", $userid)
-                ->leftJoin('users','driver.users_id','=','users.id')
-                // ->where('driver.is_on_order',Constant::BOOLEAN_TRUE)
-                ->join('order','order.driver_userid','=','users.id')
-                ->where('order.order_status',Constant::ORDER_INPROGRESS)
-                ->get();
-
-        $employee = Employee::where("users_id", $userid)
-            ->leftJoin('users', 'employee.users_id', '=', 'users.id')
-            // ->where('employee.is_on_task', Constant::BOOLEAN_TRUE)
-
-            ->join('order','order.employee_userid','=','users.id')
-            ->where('order.order_status',Constant::ORDER_INPROGRESS)
-            ->get();
+        $driver_user_ids    = Driver::where('users_id', $userid)
+                                ->pluck('users_id')->toArray();
+        $driver             = $this->switchOrderConnection($identerprise)
+                                ->with(['driver'])
+                                ->wherein('driver_userid', $driver_user_ids)
+                                ->where('order_status', Constant::ORDER_INPROGRESS)
+                                ->get();
+        $employee_user_ids  = Employee::where('users_id', $userid)
+                                ->pluck('users_id')->toArray();
+        $employee           = $this->switchOrderConnection($identerprise)
+                                ->with(['employee'])
+                                ->wherein('employee_userid', $employee_user_ids)
+                                ->where('order_status', Constant::ORDER_INPROGRESS)
+                                ->get();
 
         try {
+            $order_connection = $this->switchOrderConnection($identerprise);
+
             if (count($driver) == 0 && count($employee) == 0) {
                 $attendance = Attendance::where('users_id', $userid)
                     ->orderby('id','DESC')
@@ -92,11 +97,11 @@ class TrackingController extends Controller
 
                 $trackingattendance = TrackingAttendance::create([
                     'idattendance'  => $attendance->id,
-                    'latitude'      => $request->latitude, 
-                    'longitude'     => $request->longitude, 
+                    'latitude'      => $request->latitude,
+                    'longitude'     => $request->longitude,
                     'status'        => Constant::STATUS_ACTIVE,
                     'created_by'    => $userid,
-                   
+
                 ]);
                 $report                 = new \stdClass();
                 $report->idattendance   = $trackingattendance->idattendance;
@@ -108,19 +113,18 @@ class TrackingController extends Controller
 
             } else {
                 if ($role == Constant::ROLE_DRIVER) {
-                    $order = Order::where('driver_userid', $userid)
+                    $order = $order_connection->where('driver_userid', $userid)
                         ->where('order_status', Constant::ORDER_INPROGRESS)
                         ->orderby('idorder', 'DESC')
                         ->get();
                 } elseif ($role == Constant::ROLE_EMPLOYEE) {
-                    $order = Order::where('employee_userid', $userid)
+                    $order = $order_connection->where('employee_userid', $userid)
                         ->where('order_status', Constant::ORDER_INPROGRESS)
                         ->orderby('idorder', 'DESC')
                         ->get();
                 } else {
                     throw new ApplicationException("errors.access_denied");
                 }
-
                 $idorder        = [];
                 $latitude       = [];
                 $longitude      = [];
@@ -129,10 +133,10 @@ class TrackingController extends Controller
 
                 foreach($order as $detailorder){
 
-                    $trackingtask = TrackingTask::create([
+                    $trackingtask = $this->switchTrackingTaskConnection($identerprise)->create([
                         'idorder'       => $detailorder->idorder,
-                        'latitude'      => $request->latitude, 
-                        'longitude'     => $request->longitude, 
+                        'latitude'      => $request->latitude,
+                        'longitude'     => $request->longitude,
                         'status'        => Constant::STATUS_ACTIVE,
                         'created_by'    => $userid,
                         'delay'         => Constant::DELAY_TASK
@@ -143,9 +147,9 @@ class TrackingController extends Controller
                     $longitude[] = $trackingtask->longitude;
                     $status[]    = $trackingtask->status;
                     $delay[]     = Constant::DELAY_TASK;
-        
+
                 }
-        
+
                 $report                 = new \stdClass();
                 $report->idorder        = $idorder;
                 $report->latitude       = $latitude;
@@ -154,12 +158,28 @@ class TrackingController extends Controller
                 $report->delay          = Constant::DELAY_TASK;
                 return Response::success($report);
             }
-        
+
         }
         catch (Exception $e) {
             throw new ApplicationException("trackingtask.failure_save_trackingtask");
         }
     }
 
-   
+    //get connection for cross-server queries
+    private function switchOrderConnection($identerprise){
+        $connection = Order::on('mysql');
+        if($identerprise == env('CARS24_IDENTERPRISE')) {
+            $connection = Order::on('cars24');
+        }
+        return $connection;
+    }
+
+    //get connection for cross-server queries
+    private function switchTrackingTaskConnection($identerprise){
+        $connection = TrackingTask::on('mysql');
+        if($identerprise == env('CARS24_IDENTERPRISE')) {
+            $connection = TrackingTask::on('cars24');
+        }
+        return $connection;
+    }
 }

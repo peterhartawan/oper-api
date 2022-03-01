@@ -13,12 +13,12 @@ use App\Traits\NullToEmptyString;
 
 /**
  * Class ClientEnterprise
- * 
+ *
  * @property int $identerprise
  * @property string $name
  * @property string $description
  * @property int $enterprise_type_identerprise_type
- * 
+ *
  * @property \App\Models\EnterpriseType $enterprise_type
  * @property \Illuminate\Database\Eloquent\Collection $dispatcher_handle_companies
  * @property \Illuminate\Database\Eloquent\Collection $users
@@ -29,7 +29,8 @@ use App\Traits\NullToEmptyString;
 class ClientEnterprise extends Model
 {
 	use NullToEmptyString;
-	
+
+    protected $connection = 'mysql';
 	protected $table = 'client_enterprise';
 	protected $primaryKey = 'identerprise';
 	public $timestamps = true;

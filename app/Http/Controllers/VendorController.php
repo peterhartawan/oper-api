@@ -19,7 +19,7 @@ use App\Http\Helpers\EventLog;
 class VendorController extends Controller
 {
 
-    
+
     /**
      * Get vendor active
      * @param [string] q
@@ -33,12 +33,12 @@ class VendorController extends Controller
         $status             =  $request->query('status');
         $is_dropdown        =  $request->query('dropdown') ?  $request->query('dropdown'): Constant::OPTION_DISABLE ;
         $orderBy            = $request->query('orderBy');
-        
+
        // $datavendor         = vendor::where('users.idrole',Constant::ROLE_VENDOR)
          //                   ->join('users','users.vendor_idvendor','=','vendor.idvendor');
 
        $datavendor          = vendor::select('vendor.*');
-        
+
         if(!empty($status)){
             $datavendor = $datavendor->where("vendor.status",$status);
         }else{
@@ -49,19 +49,19 @@ class VendorController extends Controller
             $datavendor = $datavendor->select('vendor.idvendor','vendor.name');
             if(!empty($keyword_search))
                 $datavendor = $datavendor->where("vendor.name","like","%".$keyword_search."%");
-            
+
         }else{
                 $datavendor = $datavendor->select('vendor.*')
                               ->with(["users"]);
-            
+
             if(!empty($keyword_search)){
                 $datavendor = $datavendor->where(function($query) use ($keyword_search) {
-                                $query->where('vendor.name','like','%'.$keyword_search.'%') 
-                                ->orwhere('vendor.email','like','%'.$keyword_search.'%') 
+                                $query->where('vendor.name','like','%'.$keyword_search.'%')
+                                ->orwhere('vendor.email','like','%'.$keyword_search.'%')
                                 ->orwhere('vendor.office_phone_number','like','%'.$keyword_search.'%') ;
                             });
-            } 
-            
+            }
+
         }
 
         //OrderBy
@@ -106,7 +106,7 @@ class VendorController extends Controller
                 'vendor_idvendor' => $request->idvendor,
                 'status'    => Constant::STATUS_INACTIVE
             ]);
-            
+
             $passwordReset = PasswordReset::updateOrCreate(
                 ['email' => $user->email],
                 [
@@ -114,7 +114,7 @@ class VendorController extends Controller
                     'token' => str_random(60)
                  ]
             );
-            
+
             $dataraw = '';
             $reason  = 'Create Admin Vendor #';
             $trxid   = $request->idvendor;
@@ -165,11 +165,11 @@ class VendorController extends Controller
             'admin_mobile_number' => 'required|min:10|max:45|string|unique:users,phonenumber',
             'admin_email' => 'required|min:10|max:80|email|unique:vendor,email'
         ]);
-        
+
         DB::beginTransaction();
 
         try {
-            
+
             $vendor = vendor::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -191,7 +191,7 @@ class VendorController extends Controller
                 'vendor_idvendor' => $vendor->idvendor,
                 'status'    => Constant::STATUS_INACTIVE
             ]);
-            
+
             $passwordReset = PasswordReset::updateOrCreate(
                 ['email' => $user->email],
                 [
@@ -213,7 +213,7 @@ class VendorController extends Controller
                 $user->notify(
                     new AccountActivation($passwordReset->token,$linkurl)
                 );
-                
+
             return Response::success($vendor);
 
         } catch (Exception $e) {
@@ -241,11 +241,11 @@ class VendorController extends Controller
             ->where('idvendor', $id)
             ->whereIn('vendor.status',$status)
             ->first();
-        
+
         if(empty($vendor)){
             throw new ApplicationException("errors.entity_not_found", ['entity' => 'vendor','id' => $id]);
         }
-        
+
         return Response::success($vendor);
     }
 
@@ -267,14 +267,14 @@ class VendorController extends Controller
      * @return [string] message
      */
     public function update(Request $request, $id)
-    {          
+    {
         $vendor = Vendor::where('idvendor', $id)->first();
 
         if($request->email == $vendor->email) {
             $email ='required|min:10|max:80|email';
         }else{
             $email ='required|min:10|max:80|email|unique:vendor,email';
-        }      
+        }
         Validate::request($request->all(), [
             'name'=> 'required|min:3|max:45|string' ,
             'email' => $email,
@@ -284,7 +284,7 @@ class VendorController extends Controller
             'pic_mobile_number' => 'required|min:10|max:45|string',
             'pic_email' => 'required|min:10|max:80|email'
         ]);
-        
+
         $name = $request->name;
         $email = $request->email;
         $office_phone_number = $request->office_phone_number;
@@ -306,7 +306,7 @@ class VendorController extends Controller
                     'pic_email' => $pic_email,
                     'updated_by' => $request->user()->id,
                     'name' => $name,
-                ]);   
+                ]);
 
             $dataraw = '';
             $reason  = 'Update Vendor #';
@@ -342,9 +342,9 @@ class VendorController extends Controller
 
             return Response::success(['id' => $id]);
         }else{
-            throw new ApplicationException("vendors.failure_delete_vendor", ['id' => $id]);  
+            throw new ApplicationException("vendors.failure_delete_vendor", ['id' => $id]);
         }
-                        
+
 
     }
 
@@ -384,7 +384,7 @@ class VendorController extends Controller
                     ->where('status',"=",Constant::STATUS_ACTIVE)
                     ->update([
                         'status' => Constant::STATUS_SUSPENDED,
-                        'reason_suspend' => $reason_suspend,               
+                        'reason_suspend' => $reason_suspend,
                         'updated_by' => $request->user()->id,
                     ]);
 
@@ -399,7 +399,7 @@ class VendorController extends Controller
             }else{
                 throw new ApplicationException("user.failed_to_suspend", ['id' => $id]);
             }
-            
+
         } catch (Exception $e) {
             throw new ApplicationException("user.failed_to_suspend", ['id' => $id]);
         }
@@ -435,11 +435,11 @@ class VendorController extends Controller
             $vendor  = Vendor::where('idvendor', $id)
                     ->whereIn('status', [Constant::STATUS_INACTIVE, Constant::STATUS_SUSPENDED])
                     ->update([
-                        'status' => Constant::STATUS_ACTIVE,  
-                        'reason_suspend' => null,                
+                        'status' => Constant::STATUS_ACTIVE,
+                        'reason_suspend' => null,
                         'updated_by' => $request->user()->id,
                     ]);
-        
+
             if ($vendor > 0) {
                 $dataraw = '';
                 $reason  = 'Activate Vendor #';
@@ -458,10 +458,10 @@ class VendorController extends Controller
     }
 
     /**
-     * resend activation 
+     * resend activation
      *
      * @param  [integer] idvendor
-     * 
+     *
      */
     public function resendactivation(Request $request)
     {
@@ -478,7 +478,7 @@ class VendorController extends Controller
         if(empty($user)){
             throw new ApplicationException("errors.entity_not_found", ['entity' => 'vendor','id' => $request->idvendor]);
         }
-        
+
         $passwordReset = PasswordReset::updateOrCreate(
             ['email' => $user->email],
             [

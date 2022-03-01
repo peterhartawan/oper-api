@@ -50,7 +50,7 @@ class TaskTemplateController extends Controller
                 if($request->query('identerprise')){
                     $taskTemplate->where("client_enterprise_identerprise",$request->query('identerprise'));
                 }
- 
+
                 if(!empty($idvendor)){
                     $taskTemplate->where("vendor_idvendor",$idvendor);
                 }
@@ -67,7 +67,7 @@ class TaskTemplateController extends Controller
             case Constant::ROLE_ENTERPRISE:
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
             case Constant::ROLE_DISPATCHER_ONDEMAND:
-                
+
                 return Response::success(
                     TaskTemplate::with("tasks")
                     ->where('status','!=',Constant::STATUS_DELETED)
@@ -109,7 +109,7 @@ class TaskTemplateController extends Controller
         ]);
 
         DB::beginTransaction();
-        
+
         try {
             if ($user->idrole == constant::ROLE_VENDOR) {
                 $taskTemplate = TaskTemplate::create([
@@ -128,7 +128,7 @@ class TaskTemplateController extends Controller
                 ]);
             }
 
-           
+
             $tasks = [];
             foreach ($request->tasks as $index => $task){
                 try {
@@ -146,9 +146,9 @@ class TaskTemplateController extends Controller
                         'location_name' => $task["location_name"] ?? null,
                         'created_by' => auth()->guard('api')->user()->id
                     ]);
-                    
+
                     $tasks[$index] = $newTask;
-                }catch (Exception $e) {                   
+                }catch (Exception $e) {
                     throw new ApplicationException("tasktemplate.failure_save_task_template");
                 }
             }
@@ -158,7 +158,7 @@ class TaskTemplateController extends Controller
             $trxid   = $taskTemplate->task_template_id;
             $model   = 'task template';
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
-            
+
             DB::commit();
             $taskTemplate->tasks = $tasks;
             return Response::success($taskTemplate);
@@ -166,7 +166,7 @@ class TaskTemplateController extends Controller
             DB::rollBack();
             throw new ApplicationException("tasktemplate.failure_save_tasktemplate");
         }
-        
+
     }
 
     /**
@@ -214,7 +214,7 @@ class TaskTemplateController extends Controller
         ]);
 
         DB::beginTransaction();
-        
+
         try {
             if ($user->idrole == constant::ROLE_VENDOR) {
                 $taskTemplate = TaskTemplate::where('task_template_id', $id)
@@ -236,12 +236,12 @@ class TaskTemplateController extends Controller
             }
             if ($oldTasks = Task::where('task_template_id', $id)) {
                     $oldTasks->delete();
-            }           
+            }
 
             foreach ($request->tasks as $index => $task){
                 try {
                     $newTask = Task::create([
-                        'task_template_id' => $id,  
+                        'task_template_id' => $id,
                         'sequence' => $index+1,
                         'name' => $task["name"],
                         'description' => $task["description"] ?? null,
@@ -257,7 +257,7 @@ class TaskTemplateController extends Controller
                     throw new ApplicationException("tasktemplate.failure_save_task_template");
                 }
             }
-            
+
             $dataraw = '';
             $reason  = 'Update Task Template #';
             $trxid   = $id;
@@ -265,13 +265,13 @@ class TaskTemplateController extends Controller
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
             DB::commit();
-            
+
             return Response::success("{$request->template_name} update success");
         } catch (Exception $e) {
             DB::rollBack();
             throw new ApplicationException("tasktemplate.failure_save_task_template");
         }
-        
+
     }
 
     /**
@@ -313,15 +313,15 @@ class TaskTemplateController extends Controller
         $type_report    = $request->type_report;
 
         if (empty($daterange)) {
-            throw new ApplicationException("errors.template_daterange");            
+            throw new ApplicationException("errors.template_daterange");
         }
 
         $user           = auth()->guard('api')->user();
         $from_date      = Carbon::parse(substr($daterange, 0, 10))->format('Y-m-d');
         $to_date        = Carbon::parse(substr($daterange, -10))->format('Y-m-d 23:59:59');
-        
+
         switch ($user->idrole) {
-            
+
             case Constant::ROLE_SUPERADMIN:
                 $order = Order::select('order.*');
             break;
@@ -343,21 +343,25 @@ class TaskTemplateController extends Controller
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->where('client_enterprise.enterprise_type_identerprise_type', Constant::ENTERPRISE_TYPE_REGULAR)
                     ->get();
-                    
+
                 $array = json_decode(json_encode($id_client), true);
 
                 $order = Order::wherein('order.client_userid',$array);
             break;
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
-                $order = Order::where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                $order_connection = Order::on('mysql');
+                if($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')){
+                    $order_connection = Order::on('cars24');
+                }
+                $order = $order_connection->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
             break;
 
             default:
             break;
-        } 
+        }
 
-            
+
         if( $type_report == 'driver'){
             $order = $order->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_EMPLOYEE]);
         }else{
@@ -382,21 +386,21 @@ class TaskTemplateController extends Controller
 
                 $taskTemplate  = $taskTemplate2->map(function ($item, $key) use ($user,$from_date,$to_date,$type_report) {
                     switch ($user->idrole) {
-            
+
                         case Constant::ROLE_SUPERADMIN:
                             $order2 = Order::select('order.*');
                         break;
-            
+
                         case Constant::ROLE_VENDOR:
                             $order2 = Order::select('order.*')
                                 ->Join('users','order.created_by','=','users.id')
                                 ->where('users.vendor_idvendor', $user->vendor_idvendor);
                         break;
-            
+
                         case Constant::ROLE_ENTERPRISE:
                             $order2 = Order::where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
                         break;
-            
+
                         case Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER:
                             $id_client = DB::table('users')
                                 ->select('id')
@@ -404,20 +408,20 @@ class TaskTemplateController extends Controller
                                 ->where('users.vendor_idvendor', $user->vendor_idvendor)
                                 ->where('client_enterprise.enterprise_type_identerprise_type', Constant::ENTERPRISE_TYPE_REGULAR)
                                 ->get();
-                                
+
                             $array = json_decode(json_encode($id_client), true);
-            
+
                             $order2 = Order::wherein('order.client_userid',$array);
                         break;
-            
+
                         case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
                             $order2 = Order::where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
                         break;
-            
+
                         default:
                         break;
-                    } 
-                    
+                    }
+
                     if( $type_report == 'driver'){
                         $order2 = $order2->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_EMPLOYEE]);
                     }else{
@@ -445,24 +449,24 @@ class TaskTemplateController extends Controller
                             ->whereIn('task_template_id',$id_template_order)
                             // ->where("client_enterprise_identerprise",auth()->guard('api')->user()->client_enterprise_identerprise)
                             ->get();
-                
+
                 $taskTemplate  = $taskTemplate2->map(function ($item, $key) use ($user,$from_date,$to_date) {
                     switch ($user->idrole) {
-            
+
                         case Constant::ROLE_SUPERADMIN:
                             $order2 = Order::select('order.*');
                         break;
-            
+
                         case Constant::ROLE_VENDOR:
                             $order2 = Order::select('order.*')
                                 ->Join('users','order.created_by','=','users.id')
                                 ->where('users.vendor_idvendor', $user->vendor_idvendor);
                         break;
-            
+
                         case Constant::ROLE_ENTERPRISE:
                             $order2 = Order::where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
                         break;
-            
+
                         case Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER:
                             $id_client = DB::table('users')
                                 ->select('id')
@@ -470,35 +474,35 @@ class TaskTemplateController extends Controller
                                 ->where('users.vendor_idvendor', $user->vendor_idvendor)
                                 ->where('client_enterprise.enterprise_type_identerprise_type', Constant::ENTERPRISE_TYPE_REGULAR)
                                 ->get();
-                                
+
                             $array = json_decode(json_encode($id_client), true);
-            
+
                             $order2 = Order::wherein('order.client_userid',$array);
                         break;
-            
+
                         case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
                             $order2 = Order::where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
                         break;
-            
+
                         default:
                         break;
-                    } 
-                    
-                    
+                    }
+
+
                     $item['order'] = $order2->whereBetween('order.booking_time', [$from_date, $to_date])
                                     ->where('task_template_task_template_id',$item->task_template_id)
                                     ->where('order.order_status', Constant::ORDER_COMPLETED)
                                     ->get();
                     return $item;
                 });
-                
+
                 return Response::success($taskTemplate);
 
             break;
             default:
             break;
         }
-       
+
     }
 
 }

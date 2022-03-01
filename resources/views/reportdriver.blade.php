@@ -56,16 +56,18 @@
                     <td >{{ $order['name_driver'] }}</td>
                     <td >{{ $order['dispatch_time'] }}</td>
 
-                    @foreach ($order->template as $post)
+                    {{-- @foreach ($order->template as $post) --}}
+                    @foreach ($order['template'] as $post)
 						<td>{{ date('H:i:s', strtotime($post['date'])) }}</td>
                     @endforeach
 
-                    <?php 
-                        $i = 0; 
+                    <?php
+                        $i = 0;
                         $pengurang = $order['dispatch_at'] ;
                     ?>
-                    @foreach ($order->template as $post)
-                        <?php 
+                    {{-- @foreach ($order->template as $post) --}}
+                    @foreach ($order['template'] as $post)
+                        <?php
                             $start = new DateTime($pengurang);
                             $end   = new DateTime($post['date']);
                             $interval = $start->diff($end);
@@ -74,8 +76,8 @@
                         ?>
 
                         <td >{{ $elapsed }}</td>
-                        <?php 
-                            $i++; 
+                        <?php
+                            $i++;
                             $pengurang= $post['date'];
                         ?>
                     @endforeach

@@ -50,16 +50,18 @@ class OrderController extends Controller
     public function index()
     {
         $user = auth()->guard('api')->user();
+        $identerprise = $user->client_enterprise_identerprise;
+        $order_connection = $this->switchOrderConnection($identerprise);
         $order = new \stdClass;
+
         $message = 'messages.success';
 
         switch ($user->idrole) {
             case Constant::ROLE_DRIVER:
-                $order = Order::select('order.*')
-                    ->with(['order_tasks', 'task_template'])
+                $order = $order_connection->select('order.*')
+                    ->with(['order_tasks', 'task_template', 'driver'])
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
-                    ->where('order.driver_userid', auth()->guard('api')->user()->id)
-                    ->leftjoin('driver', 'driver.iddriver', '=', 'order.driver_userid')->get();
+                    ->where('order.driver_userid', auth()->guard('api')->user()->id)->get();
 
                 if ($order !== NULL) {
                     $checkAttendance = Attendance::where('users_id', auth()->guard('api')->user()->id)
@@ -86,7 +88,7 @@ class OrderController extends Controller
                 break;
 
             case Constant::ROLE_EMPLOYEE:
-                $order = Order::select('order.*')
+                $order = $order_connection->select('order.*')
                     ->with(['order_tasks', 'task_template'])
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
                     ->where('order.employee_userid', auth()->guard('api')->user()->id)
@@ -126,8 +128,10 @@ class OrderController extends Controller
      */
     public function show($id)
     {
+        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
+        $order_connection = $this->switchOrderConnection($identerprise);
 
-        $order = Order::with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template"])
+        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template"])
             ->where('idorder', $id)->first();
 
         if ($order !== NULL) {
@@ -246,8 +250,9 @@ class OrderController extends Controller
         DB::beginTransaction();
 
         try {
+            $order_connection = $this->switchOrderConnection($identerprise);
 
-            $order = Order::create([
+            $new_order_data = [
                 'trx_id' => $trxId,
                 'task_template_task_template_id'  => $request->task_template_id,
                 'client_enterprise_identerprise' => $identerprise,
@@ -273,7 +278,9 @@ class OrderController extends Controller
                 'origin_name'       => $request->origin_name,
                 'destination_name'  => $request->destination_name,
                 'vehicle_year' => $request->vehicle_year ?? 0
-            ]);
+            ];
+
+            $order = $order_connection->create($new_order_data);
 
             // creat or update vehicle type
             $vehicletype = VehicleType::updateOrCreate(
@@ -337,7 +344,7 @@ class OrderController extends Controller
                 }
             }
 
-            $response = Order::find($order->idorder);
+            $response = $order_connection->find($order->idorder);
 
             $array = array(
                 'order_idorder' => $order->idorder
@@ -385,9 +392,11 @@ class OrderController extends Controller
             'destination_name'  => 'nullable|string'
         ]);
 
-        $vehicle_type   = strtoupper($request->vehicle_type);
-        $user       = auth()->guard('api')->user();
-        $order      = Order::where('idorder', $id)->first();
+        $vehicle_type       = strtoupper($request->vehicle_type);
+        $user               = auth()->guard('api')->user();
+        $identerprise       = $user->client_enterprise_identerprise;
+        $order_connection   = $this->switchOrderConnection($identerprise);
+        $order              = $order_connection->where('idorder', $id)->first();
 
         //cek apakah id order ada
         if (empty($order))
@@ -397,7 +406,7 @@ class OrderController extends Controller
         if ($order->order_status != Constant::ORDER_OPEN)
             throw new ApplicationException("orders.invalid_open_order");
 
-        //hanya client enterprise dan dispacther plus yg bisa edit 
+        //hanya client enterprise dan dispacther plus yg bisa edit
         if (!in_array($user->idrole, [Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS, Constant::ROLE_ENTERPRISE]))
             throw new ApplicationException('errors.access_denied');
 
@@ -475,20 +484,30 @@ class OrderController extends Controller
      */
     public function cancelorder(Request $request)
     {
-        Validate::request($request->all(), [
-            'idorder'        => "required|integer|exists:order",
-            'reason_cancel'  => "required|string"
-        ]);
+        $user               = auth()->guard('api')->user();
+        $identerprise       = $user->client_enterprise_identerprise;
+        $order_connection   = $this->switchOrderConnection($identerprise);
+
+        if($identerprise == env('CARS24_IDENTERPRISE')){
+            Validate::request($request->all(), [
+                'idorder'        => "required|integer|exists:cars24.order",
+                'reason_cancel'  => "required|string"
+            ]);
+        } else {
+            Validate::request($request->all(), [
+                'idorder'        => "required|integer|exists:order",
+                'reason_cancel'  => "required|string"
+            ]);
+        }
 
         //cek yang login dispatcher bukan
-        $user       = auth()->guard('api')->user();
         if (!in_array($user->idrole, [Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS, Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER, Constant::ROLE_ENTERPRISE])) {
             throw new ApplicationException('errors.unauthorized');
         }
 
         //ditutup karena status open bisa cancel
         //cek apakah order sudah di assign
-        $order      = Order::where('idorder', $request->idorder);
+        $order      = $order_connection->where('idorder', $request->idorder);
         // ->where('driver_userid', '!=', null);
         $data_order = $order->first();
 
@@ -567,10 +586,20 @@ class OrderController extends Controller
      */
     public function assign(Request $request)
     {
-        Validate::request($request->all(), [
-            'idorder'        => "required|integer|exists:order",
-            'driver_userid'  => "required|integer|exists:users,id"
-        ]);
+        $identerprise       = auth()->guard('api')->user()->client_enterprise_identerprise;
+        $order_connection   = $this->switchOrderConnection($identerprise);
+
+        if($identerprise == env('CARS24_IDENTERPRISE')){
+            Validate::request($request->all(), [
+                'idorder'        => "required|integer|exists:cars24.order",
+                'driver_userid'  => "required|integer|exists:users,id"
+            ]);
+        } else {
+            Validate::request($request->all(), [
+                'idorder'        => "required|integer|exists:mysql.order",
+                'driver_userid'  => "required|integer|exists:users,id"
+            ]);
+        }
 
         //ditutup dulu
         // $checkAttendance = Attendance::where('users_id', $request->driver_userid)
@@ -580,10 +609,10 @@ class OrderController extends Controller
 
         // if(empty($checkAttendance)){
         //     throw new ApplicationException("attendance.failure_attendance_task_clockin");
-        // }               
+        // }
 
         //Cek status order
-        $order      = Order::with(["vehicle_branch"])
+        $order      = $order_connection->with(["vehicle_branch"])
             ->where('idorder', $request->idorder);
         $data_order = $order->first();
 
@@ -624,14 +653,16 @@ class OrderController extends Controller
         //                     ->leftJoin('driver','driver.users_id','=','users.id')
         //                     ->first();
 
-        // if($cek_clientdriver->drivertype_iddrivertype == Constant::DRIVER_TYPE_PKWT){ 
+        // if($cek_clientdriver->drivertype_iddrivertype == Constant::DRIVER_TYPE_PKWT){
         //     if($cek_clientdriver->client_enterprise_identerprise != $detail_order->client_enterprise_identerprise){
         //         throw new ApplicationException("orders.failure_assign_driver_client");
         //     }
         // }
 
         //cek order task sudah di assign belum
-        $assign_order = OrderTasks::where("order_idorder", $request->idorder)->get();
+        $order_tasks_connection = $this->switchOrderTasksConnection($identerprise);
+        $assign_order           = $order_tasks_connection->where("order_idorder", $request->idorder)->get();
+
         if ($assign_order->count() > 0) {
             throw new ApplicationException("orders.failure_assign_double");
         }
@@ -642,7 +673,7 @@ class OrderController extends Controller
 
             foreach ($tasks as $key => $task) {
                 try {
-                    OrderTasks::create([
+                    $order_tasks_connection->create([
                         'order_idorder' => $request->idorder,
                         'order_task_status' => Constant::ORDER_TASK_NOT_STARTED,
                         'status' => Constant::STATUS_ACTIVE,
@@ -674,7 +705,7 @@ class OrderController extends Controller
                 ]
             );
 
-            $updateTaskpertama = OrderTasks::where("order_idorder", $request->idorder)
+            $updateTaskpertama = $order_tasks_connection->where("order_idorder", $request->idorder)
                 ->where("sequence", 1)
                 ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
 
@@ -718,7 +749,7 @@ class OrderController extends Controller
             //                         'Origin'=> $data_order->origin_name,
             //                         'Destination'=> $data_order->destination_name,
             //                     ],
-            //                 ];     
+            //                 ];
             // if ($user_driver){
             //     $user_driver->notify(new OrderNotification($orderan2));
             // }
@@ -873,7 +904,9 @@ class OrderController extends Controller
         $NowDate = \Carbon\Carbon::now()->format('Y-m-d');
 
 
-        $user = auth()->guard('api')->user();
+        $user               = auth()->guard('api')->user();
+        $identerprise       = auth()->guard('api')->user()->client_enterprise_identerprise;
+
         $enterprise_name    = $request->query('enterprise_name');
         $driver_name        = $request->query('driver_name');
         $month              = $request->query('month');
@@ -884,6 +917,8 @@ class OrderController extends Controller
         $trxId              = $request->query('trx_id');
         $from               = $request->query('from');
         $to                 = $request->query('to');
+
+        $order_connection = $this->switchOrderConnection($identerprise);
 
         switch ($user->idrole) {
 
@@ -900,12 +935,13 @@ class OrderController extends Controller
                 break;
 
             case Constant::ROLE_VENDOR:
-                $order = DB::table('order')
-                    ->join('order_type', 'order.order_type_idorder_type', 'order_type.idorder_type')
-                    ->Join('users', 'order.created_by', '=', 'users.id')
-                    ->where('users.vendor_idvendor', $user->vendor_idvendor)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.order_status', $order_status);
+                $user_ids = User::where('vendor_idvendor', $user->vendor_idvendor)
+                    ->pluck('id')->toArray();
+
+                $order = Order::on('mysql')
+                    ->whereIn('created_by', $user_ids)
+                    ->whereNotIn('order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                    ->where('order_status', $order_status);
                 break;
 
             case Constant::ROLE_ENTERPRISE:
@@ -926,18 +962,16 @@ class OrderController extends Controller
 
                 $array = json_decode(json_encode($id_client), true);
 
-                $order = DB::table('order')
-
-                    ->join('order_type', 'order.order_type_idorder_type', 'order_type.idorder_type')
+                $order = $order_connection
+                    ->with(['order_type'])
                     ->where('order.order_status', $order_status)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->wherein('order.client_userid', $array);
+                    ->whereIn('order.client_userid', $array);
                 break;
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
-                $order = DB::table('order')
-
-                    ->join('order_type', 'order.order_type_idorder_type', 'order_type.idorder_type')
+                $order = $order_connection
+                    ->with('order_type')
                     ->where('order.order_status', $order_status)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                     ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
@@ -955,18 +989,22 @@ class OrderController extends Controller
         }
 
         if (!empty($driver_name)) {
-            $order = $order->join('users as users_driver', 'users_driver.id', '=', 'order.driver_userid')
-                ->where('users_driver.name', 'like', '%' . $driver_name . '%');
+            $drivers_user_id = DB::table('driver')
+                ->join('users as users_driver', 'users_driver.id', '=', 'driver.users_id')
+                ->where('users_driver.name', 'like', '%' . $driver_name . '%')
+                ->pluck('driver.users_id')->toArray();
+            $order = $order->whereIn('driver_userid', $drivers_user_id);
         }
 
         if (!empty($enterprise_name)) {
+            $enterprises_user_id = DB::table('client_enterprise')
+                ->where('name', 'like', '%' . $enterprise_name . '%')
+                ->pluck('identerprise')->toArray();
+
             if (empty($month)) {
-                $order = $order->join('client_enterprise', 'client_enterprise.identerprise', '=', 'order.client_enterprise_identerprise')
-                    ->where('client_enterprise.name', 'like', '%' . $enterprise_name . '%')
-                    ->GROUPBY('order.idorder');
+                $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id);
             } else {
-                $order = $order->join('client_enterprise', 'client_enterprise.identerprise', '=', 'order.client_enterprise_identerprise')
-                    ->where('client_enterprise.name', 'like', '%' . $enterprise_name . '%')
+                $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id)
                     ->whereMonth('order.booking_time', $month);
             }
         }
@@ -1003,10 +1041,27 @@ class OrderController extends Controller
         }
 
         //select
-        $order->leftjoin('users as detail_driver', 'detail_driver.id', '=', 'order.driver_userid')
-            ->leftjoin('vehicle_brand', 'vehicle_brand.id', '=', 'order.vehicle_brand_id')
-            ->leftjoin('client_enterprise as data_client', 'data_client.identerprise', '=', 'order.client_enterprise_identerprise')
-            ->select('order.*', DB::raw("`vehicle_brand`.`brand_name`,`data_client`.`name` as nama_client_enterprise,`detail_driver`.`name` as nama_driver,`detail_driver`.`profile_picture`,`detail_driver`.`profil_picture_2`, IF(order.order_status = 1, 'Open', IF(order.order_status = 2, 'In Progress', IF(order.order_status = 3, 'Completed', 'Unknown'))) as status_text"));
+        $order->with([
+                'vehicle_branch' => function($query){
+                    $query->select('id', 'brand_name as vehicle_brand.brand_name');
+                },
+                'enterprise' => function($query){
+                    $query->select('identerprise', 'name as nama_client_enterprise');
+                },
+                'driver.user' => function($query){
+                        $query->select(
+                            'id',
+                            'name as nama_driver',
+                            'profile_picture as detail_driver.profile_picture',
+                            'profil_picture_2 as detail_driver.profil_picture_2');
+                }
+            ])
+            ->select(
+                'order.*',
+                DB::Raw(
+                    "IF(order.order_status = 1, 'Open',
+                    IF(order.order_status = 2, 'In Progress',
+                    IF(order.order_status = 3, 'Completed', 'Unknown'))) as status_text"));
 
         $order = $order->get();
         array_walk($order, function (&$v, $k) {
@@ -1199,38 +1254,68 @@ class OrderController extends Controller
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
 
-                $order_open         = DB::table('order')
-                    ->where('order.order_status', Constant::ORDER_OPEN)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                if($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')){
+                    $order_open             = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_OPEN)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
+                    $order_inprogress       = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
-                $order_inprogress   = DB::table('order')
-                    ->where('order.order_status', Constant::ORDER_INPROGRESS)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                    $order_success          = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_COMPLETED)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
-                $order_success      = DB::table('order')
-                    ->where('order.order_status', Constant::ORDER_COMPLETED)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                    $order_open_list         = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_OPEN)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
-                $order_open_list         = DB::table('order')
-                    ->where('order.order_status', Constant::ORDER_OPEN)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                    $order_inprogress_list   = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
+                    $order_success_list      = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_COMPLETED)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
-                $order_inprogress_list   = DB::table('order')
-                    ->where('order.order_status', Constant::ORDER_INPROGRESS)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                } else {
+                    $order_open         = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_OPEN)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
-                $order_success_list      = DB::table('order')
-                    ->where('order.order_status', Constant::ORDER_COMPLETED)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
-                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                    $order_inprogress   = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
+                    $order_success      = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_COMPLETED)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
+                    $order_open_list         = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_OPEN)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
+                    $order_inprogress_list   = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
+                    $order_success_list      = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_COMPLETED)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+                }
 
                 break;
 
@@ -1402,7 +1487,9 @@ class OrderController extends Controller
     private function getDetailOrderByStatus($id, $order_status)
     {
         $user = auth()->guard('api')->user();
-        $order = Order::with(["order_tasks", "vehicle_branch"])->where('idorder', $id);
+        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
+        $order_connection = $this->switchOrderConnection($identerprise);
+        $order = $order_connection->with(["order_tasks", "vehicle_branch"])->where('idorder', $id);
 
         switch ($user->idrole) {
 
@@ -1538,8 +1625,9 @@ class OrderController extends Controller
             'otp'               => "nullable|string"
         ]);
 
-        $id     = $request->idordertask;
-        $user   = auth()->guard('api')->user();
+        $id             = $request->idordertask;
+        $user           = auth()->guard('api')->user();
+        $identerprise   = $user->client_enterprise_identerprise;
         // NMD jika ada task tengah malam bagaimana?
         // $checkAttendance = Attendance::where('users_id', auth()->guard('api')->user()->id)
         //                 ->where("clock_in",">=",Carbon::today()->toDateString());
@@ -1548,7 +1636,7 @@ class OrderController extends Controller
         //     throw new ApplicationException("attendance.failure_attendance_task_clockin");
         // }
 
-        $OrderTasks =  OrderTasks::where('idordertask', $id)->first();
+        $OrderTasks     = $this->switchOrderTasksConnection($identerprise)->where('idordertask', $id)->first();
 
         //Validate task status
         if ($OrderTasks->order_task_status != Constant::ORDER_TASK_INPROGRESS)
@@ -1604,18 +1692,20 @@ class OrderController extends Controller
                 }
 
                 //cek status all task
-                $check_allstatus = $this->check_allstatustask($OrderTasks->order_idorder);
+                $check_allstatus = $this->check_allstatustask($OrderTasks->order_idorder, $identerprise);
                 if ($check_allstatus == true) {
                     //update order status
 
-                    $order = Order::where('idorder', $OrderTasks->order_idorder)->update(
+                    $order_connection = $this->switchOrderConnection($identerprise);
+
+                    $order = $order_connection->where('idorder', $OrderTasks->order_idorder)->update(
                         [
                             'order_status' => Constant::ORDER_COMPLETED,
                             'updated_by'   => auth()->guard('api')->user()->id,
                         ]
                     );
 
-                    $detail_order     = Order::where('idorder', $OrderTasks->order_idorder)->first();
+                    $detail_order     = $order_connection->where('idorder', $OrderTasks->order_idorder)->first();
                     // if( $user->idrole == Constant::ROLE_DRIVER) {
                     //     $driver           = Driver::where("users_id",$detail_order->driver_userid)
                     //                         ->update(["is_on_order" => false]);
@@ -1652,9 +1742,9 @@ class OrderController extends Controller
                         $email_client->notify(new OrderNotification($orderan));
                     }
 
-                    $islastorder   = OrderTasks::where('order_idorder', $OrderTasks->order_idorder)->orderby('idordertask', 'desc')->first();
+                    $islastorder   = $this->switchOrderTasksConnection($identerprise)->where('order_idorder', $OrderTasks->order_idorder)->orderby('idordertask', 'desc')->first();
                     $id_nexttask   = $request->idordertask + 1;
-                    $next_task     = OrderTasks::where('idordertask', $id_nexttask)
+                    $next_task     = $this->switchOrderTasksConnection($identerprise)->where('idordertask', $id_nexttask)
                         ->where('order_idorder', $OrderTasks->order_idorder)
                         ->first();
                     if ($id_nexttask == $islastorder->idordertask) {
@@ -1662,15 +1752,15 @@ class OrderController extends Controller
                     } else {
                         $is_last_order = "false";
                     }
-                    $updateTaskselanjutnya = OrderTasks::where("order_idorder", $OrderTasks->order_idorder)
+                    $updateTaskselanjutnya = $this->switchOrderTasksConnection($identerprise)->where("order_idorder", $OrderTasks->order_idorder)
                         ->where('idordertask', $id_nexttask)
                         ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');
                 }
 
-                $islastorder   = OrderTasks::where('order_idorder', $OrderTasks->order_idorder)->orderby('idordertask', 'desc')->first();
+                $islastorder   = $this->switchOrderTasksConnection($identerprise)->where('order_idorder', $OrderTasks->order_idorder)->orderby('idordertask', 'desc')->first();
                 $id_nexttask   = $request->idordertask + 1;
-                $next_task     = OrderTasks::where('idordertask', $id_nexttask)
+                $next_task     = $this->switchOrderTasksConnection($identerprise)->where('idordertask', $id_nexttask)
                     ->where('order_idorder', $OrderTasks->order_idorder)
                     ->first();
 
@@ -1680,7 +1770,7 @@ class OrderController extends Controller
                     $is_last_order = "false";
                 }
 
-                $updateTaskselanjutnya = OrderTasks::where("order_idorder", $OrderTasks->order_idorder)
+                $updateTaskselanjutnya = $this->switchOrderTasksConnection($identerprise)->where("order_idorder", $OrderTasks->order_idorder)
                     ->where('idordertask', $id_nexttask)
                     ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
 
@@ -1769,26 +1859,32 @@ class OrderController extends Controller
      *
      * Get list history
      *
-     * @return [json] 
+     * @return [json]
      */
     public function history(Request $request)
     {
         $user   = auth()->guard('api')->user();
+        $identerprise = $user->client_enterprise_identerprise;
+        $order_connection = $this->switchOrderConnection($identerprise);
 
         switch ($user->idrole) {
             case Constant::ROLE_DRIVER:
-                $order = Order::select('order.*', 'task_template.task_template_name', DB::RAW('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format'))
-                    ->with(["enterprise"])
-                    ->join('task_template', 'order.task_template_task_template_id', 'task_template.task_template_id')
+                $order = $order_connection->select('order.*')
+                    ->selectRaw('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format')
+                    ->with(['enterprise', 'task_template' => function ($query){
+                        $query->select(['task_template_id', 'task_template_name']);
+                    }])
                     ->whereIn('order.order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])
                     ->where('order.driver_userid', auth()->guard('api')->user()->id)
                     ->orderBy('idorder', 'desc');
                 break;
 
             case Constant::ROLE_EMPLOYEE:
-                $order = Order::select('order.*', 'task_template.task_template_name', DB::RAW('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format'))
-                    ->join('task_template', 'order.task_template_task_template_id', 'task_template.task_template_id')
-                    ->with(["employee"])
+                $order = $order_connection->select('order.*')
+                    ->selectRaw('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format')
+                    ->with(['enterprise', 'task_template' => function ($query){
+                        $query->select(['task_template_id', 'task_template_name']);
+                    }])
                     ->whereIn('order.order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])
                     ->where('order.employee_userid', auth()->guard('api')->user()->id)
                     ->orderBy('idorder', 'desc');
@@ -1801,22 +1897,31 @@ class OrderController extends Controller
     public function history_detail($id)
     {
         $user = auth()->guard('api')->user();
+        $identerprise = $user->client_enterprise_identerprise;
+        $order_connection = $this->switchOrderConnection($identerprise);
 
         switch ($user->idrole) {
             case Constant::ROLE_DRIVER:
-                $order = Order::select('order.*', 'ce.name as enterprise_name', 'vehicle_brand.brand_name as vehicle_brand_name', 'task_template.task_template_name', DB::RAW('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format'))
-                    ->with(["order_tasks"])
-                    ->join('client_enterprise as ce', 'order.client_enterprise_identerprise', 'ce.identerprise')
-                    ->join('vehicle_brand', 'order.vehicle_brand_id', 'vehicle_brand.id')
-                    ->join('task_template', 'order.task_template_task_template_id', 'task_template.task_template_id')
+                $order = $order_connection->select('order.*')
+                    ->selectRaw('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format')
+                    ->with([
+                            "order_tasks",
+                            "enterprise" => function($query){$query->select('identerprise', 'name');},
+                            "vehicle_branch" => function($query){$query->select('id', 'brand_name');},
+                            "task_template" => function($query){$query->select('task_template_id', 'task_template_name');}
+                        ])
                     ->where('idorder', $id)
                     ->whereIn('order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])->first();
                 break;
 
             case Constant::ROLE_EMPLOYEE:
-                $order = Order::select('order.*', 'task_template.task_template_name', DB::RAW('DATE_FORMAT(booking_time, "%W, %d %M %Y %H:%i") as booking_time_format'))
-                    ->with(["order_tasks"])
-                    ->join('task_template', 'order.task_template_task_template_id', 'task_template.task_template_id')
+                $order = $order_connection->select('order.*')
+                    ->selectRaw('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format')
+                    ->with([
+                            "order_tasks",
+                            "enterprise" => function($query){$query->select('identerprise', 'name');},
+                            "task_template" => function($query){$query->select('task_template_id', 'task_template_name');}
+                        ])
                     ->where('idorder', $id)
                     ->whereIn('order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])->first();
                 break;
@@ -1848,9 +1953,10 @@ class OrderController extends Controller
      * @param  [array] check:isquired
      */
 
-    private function check_allstatustask($id)
+    private function check_allstatustask($id, $identerprise)
     {
-        $all_ordertask    = OrderTasks::where('order_idorder', $id)
+        $order_tasks_connection = $this->switchOrderTasksConnection($identerprise);
+        $all_ordertask    = $order_tasks_connection->where('order_idorder', $id)
             ->where('order_task_status', Constant::ORDER_TASK_NOT_STARTED)
             ->get();
         if ($all_ordertask->count() >= 1) {
@@ -1886,5 +1992,22 @@ class OrderController extends Controller
         Excel::store(new UserReport($idrole, $iduser, $identerprise), '/public/file/' . $file_name);
         $fileexport = Storage::url('file/' . $file_name);
         return Response::success(["file export" => url($fileexport)]);
+    }
+
+    //get connection for cross-server queries
+    private function switchOrderConnection($identerprise){
+        $connection = Order::on('mysql');
+        if($identerprise == env('CARS24_IDENTERPRISE')) {
+            $connection = Order::on('cars24');
+        }
+        return $connection;
+    }
+
+    private function switchOrderTasksConnection($identerprise){
+        $connection = OrderTasks::on('mysql');
+        if($identerprise == env('CARS24_IDENTERPRISE')) {
+            $connection = OrderTasks::on('cars24');
+        }
+        return $connection;
     }
 }

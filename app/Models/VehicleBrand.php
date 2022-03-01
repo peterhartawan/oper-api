@@ -13,11 +13,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Class Vendor
- * 
+ *
  * @property int $idvendor
  * @property string $name
  * @property string $desc
- * 
+ *
  * @property \Illuminate\Database\Eloquent\Collection $dispatchers
  * @property \Illuminate\Database\Eloquent\Collection $users
  *
@@ -27,7 +27,8 @@ class VehicleBrand extends Model
 {
 	use NullToEmptyString;
 	use SoftDeletes;
-	
+
+    protected $connection = 'mysql';
 	protected $table = 'vehicle_brand';
 	protected $primaryKey = 'id';
 	public $timestamps = false;

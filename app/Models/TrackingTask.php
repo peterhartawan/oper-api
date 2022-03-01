@@ -24,4 +24,8 @@ class TrackingTask extends Model
      * @var array
      */
     protected $fillable = ['idorder','latitude','longitude','created_by','status','updated_by'];
+
+    public function order(){
+        return $this->hasMany(\App\Models\Order::class, 'idorder', 'idorder');
+    }
 }

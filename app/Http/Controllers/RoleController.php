@@ -12,7 +12,7 @@ use App\Constants\Constant;
 
 class RoleController extends Controller
 {
-     
+
     /**
      * Get Role
      *
@@ -41,11 +41,17 @@ class RoleController extends Controller
                 ->get();
 
         $menus = array();
-        
+
         foreach ($menusByRole as $index => $menu) {
+            $slug = $menu->slug;
+            if($slug == '/location-enterprise/'){
+                $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
+                $slug = $slug . $identerprise;
+            }
+
             $menus[$index]["idmenu"]        = $menu->idmenu;
             $menus[$index]["name"]          = $menu->name;
-            $menus[$index]["slug"]          = $menu->slug;
+            $menus[$index]["slug"]          = $slug;
             $menus[$index]["parent_idmenu"] = $menu->parent_idmenu;
             $menus[$index]["icon"]          = $menu->icon;
             $menus[$index]["static_content_idstatic_content"]    = $menu->static_content_idstatic_content;
@@ -66,7 +72,7 @@ class RoleController extends Controller
             ->get();
 
         $subs = array();
-        
+
         foreach ($subsByParent as $index => $menu) {
             $subs[$index]["idmenu"]        = $menu->idmenu;
             $subs[$index]["name"]          = $menu->name;

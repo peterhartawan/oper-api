@@ -55,7 +55,7 @@ class OrdersExport implements FromCollection,WithHeadings
         }
 
         switch ($user->idrole) {
-            
+
             case Constant::ROLE_SUPERADMIN:
                 $order = DB::table('order')
                     ->where('order_status', $this->order_status)
@@ -68,7 +68,7 @@ class OrdersExport implements FromCollection,WithHeadings
             break;
 
             case Constant::ROLE_VENDOR:
-                $order = DB::table('order')
+                $order = Order::on('mysql')
                     ->Join('users','order.created_by','=','users.id')
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_EMPLOYEE])
@@ -89,7 +89,7 @@ class OrdersExport implements FromCollection,WithHeadings
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->where('client_enterprise.enterprise_type_identerprise_type', Constant::ENTERPRISE_TYPE_REGULAR)
                     ->get();
-                    
+
                 $array = json_decode(json_encode($id_client), true);
 
                 $order = DB::table('order')
@@ -99,8 +99,11 @@ class OrdersExport implements FromCollection,WithHeadings
             break;
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
-                $order = DB::table('order')
-                    ->where('order.order_status', $this->order_status)
+                $order = Order::on('mysql');
+                if($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')){
+                    $order = Order::on('cars24');
+                }
+                $order->where('order.order_status', $this->order_status)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_EMPLOYEE])
                     ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
             break;
@@ -116,21 +119,25 @@ class OrdersExport implements FromCollection,WithHeadings
             $order->where('trx_id', $this->trxId);
         }
 
-        if (!empty($this->driver_name)) { 
-            $order = $order->join('users as users_driver','users_driver.id','=','order.driver_userid')
-                           ->where('users_driver.name', 'like', '%' . $this->driver_name . '%');                   
+        if (!empty($this->driver_name)) {
+            $drivers_user_id = DB::table('driver')
+                ->join('users as users_driver', 'users_driver.id', '=', 'driver.users_id')
+                ->where('users_driver.name', 'like', '%' . $this->driver_name . '%')
+                ->pluck('driver.users_id')->toArray();
+            $order = $order->whereIn('driver_userid', $drivers_user_id);
         }
 
         if (!empty($this->enterprise_name) ) {
-            if (empty($this->month)){
-                $order = $order->join('client_enterprise','client_enterprise.identerprise','=','order.client_enterprise_identerprise')
-                    ->where('client_enterprise.name', 'like', '%' . $this->enterprise_name . '%')
-                    ->GROUPBY('order.idorder');
-            }else{
-                $order = $order->join('client_enterprise','client_enterprise.identerprise','=','order.client_enterprise_identerprise')
-                    ->where('client_enterprise.name', 'like', '%' . $this->enterprise_name . '%')                    
-                    ->whereMonth('order.booking_time',$this->month);
-            }                
+            $enterprises_user_id = DB::table('client_enterprise')
+                ->where('name', 'like', '%' . $this->enterprise_name . '%')
+                ->pluck('identerprise')->toArray();
+
+            if (empty($month)) {
+                $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id);
+            } else {
+                $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id)
+                    ->whereMonth('order.booking_time', $month);
+            }
         }else if(!empty($this->month)){
             $order = $order->whereMonth('order.booking_time',$this->month);
         }
@@ -149,18 +156,60 @@ class OrdersExport implements FromCollection,WithHeadings
         if ($this->order_status == Constant::ORDER_COMPLETED || $this->order_status == Constant::ORDER_INPROGRESS) {
             $order = $order ->orderBy("order.idorder", "desc");
         }
-        $order->leftjoin('users as detail_driver','detail_driver.id','=','order.driver_userid')
-            ->leftjoin('users as usr','usr.id','=','order.dispatcher_userid')
-            ->leftjoin('order_type','order_type.idorder_type','=','order.order_type_idorder_type')
-            ->select(DB::raw("`order`.`idorder`,`detail_driver`.`name` as name_driver,`usr`.`name` as name_dispatcher,`booking_time`,
-            `order`.`origin_latitude`,`order`.`origin_longitude`,`order`.`user_fullname`,`order`.`user_phonenumber`,`order`.`vehicle_owner`,
-            `order`.`destination_latitude`,`order`.`destination_longitude`,`order`.`client_vehicle_license`,`order`.`vehicle_brand_id`,
-            `order`.`vehicle_type`,`order`.`vehicle_transmission`,`order`.`vehicle_year`,`order`.`vehicle_color`,`order`.`message`,
-            `order_type`.`name` as name_ordertype,IF(order.order_status = 1, 'Open', IF(order.order_status = 2, 'In Progress', IF(order.order_status = 3, 'Completed', 'Unknown'))) as status_order"));
-       
-        $orders = $order->get();
+        $orders = $order->with([
+            'driver.user' => function($query){
+                    $query->select(
+                        'id',
+                        'name as nama_driver');
+            },
+            'dispatcher' => function($query){
+                $query->select(
+                    'id',
+                    'name as nama_dispatcher');
+            },
+            'order_type' => function($query){
+                $query->select(
+                    'idorder_type',
+                    'name as nama_ordertype');
+            }
+        ])->select(DB::Raw(
+            "CAST(`order`.`idorder` as CHAR),
+            `booking_time`,
+            `order`.`origin_latitude`,
+            `order`.`origin_longitude`,
+            `order`.`user_fullname`,
+            `order`.`user_phonenumber`,
+            `order`.`vehicle_owner`,
+            `order`.`destination_latitude`,
+            `order`.`destination_longitude`,
+            `order`.`client_vehicle_license`,
+            CAST(`order`.`vehicle_brand_id` as CHAR),
+            `order`.`vehicle_type`,
+            `order`.`vehicle_transmission`,
+            CAST(`order`.`vehicle_year` as CHAR),
+            `order`.`vehicle_color`,
+            `order`.`message`,
+            `order`.`trx_id`,
+            IF(order.order_status = 1, 'Open',
+            IF(order.order_status = 2, 'In Progress',
+            IF(order.order_status = 3, 'Completed', 'Unknown'))) as status_text"
+        ),
+        'order.*')->get();
 
-        return $orders;
+        $driverNames = $orders->pluck('driver.user.nama_driver')->toArray();
+        $dispatcherNames = $orders->pluck('dispatcher.nama_dispatcher')->toArray();
+        $orderTypeNames = $orders->pluck('order_type.nama_ordertype')->toArray();
+
+        $arrOrders = $orders->toArray();
+        $dataCount = count($orders);
+        for($i = 0; $i < $dataCount; $i++){
+            $arrOrders[$i] = array_slice($arrOrders[$i], 0, 18);
+            array_splice($arrOrders[$i], 1, 0, $driverNames[$i]);
+            array_splice($arrOrders[$i], 2, 0, $dispatcherNames[$i]);
+            array_splice($arrOrders[$i], 19, 0, $orderTypeNames[$i]);
+        }
+
+        return collect($arrOrders);
     }
 
 }
