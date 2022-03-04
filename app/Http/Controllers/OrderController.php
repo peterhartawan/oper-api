@@ -1052,8 +1052,8 @@ class OrderController extends Controller
                         $query->select(
                             'id',
                             'name as nama_driver',
-                            'profile_picture as detail_driver.profile_picture',
-                            'profil_picture_2 as detail_driver.profil_picture_2');
+                            'profile_picture',
+                            'profil_picture_2');
                 }
             ])
             ->select(
@@ -1066,11 +1066,11 @@ class OrderController extends Controller
         $order = $order->get();
         array_walk($order, function (&$v, $k) {
             foreach ($v as $item) {
-                if (!empty($item->profile_picture)) {
-                    $item->profile_picture = env('BASE_API') . Storage::url($item->profile_picture);
+                if (!empty($item->driver->user->profile_picture)) {
+                    $item->profile_picture = env('BASE_API') . Storage::url($item->driver->user->profile_picture);
                 }
-                if (!empty($item->profil_picture_2)) {
-                    $item->profil_picture_2 = env('BASE_API') . Storage::url($item->profil_picture_2);
+                if (!empty($item->driver->user->profile_picture_2)) {
+                    $item->profil_picture_2 = env('BASE_API') . Storage::url($item->driver->user->profile_picture_2);
                 }
             }
         });
