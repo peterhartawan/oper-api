@@ -23,13 +23,13 @@ class VehicleBrandController extends Controller
     {
         $is_dropdown        = $request->query('dropdown') ? $request->query('dropdown') : Constant::OPTION_DISABLE ;
         $name               = $request->query('q');
-        if ($is_dropdown == Constant::OPTION_ENABLE) { 
+        if ($is_dropdown == Constant::OPTION_ENABLE) {
             $vehicle_brand_awal = VehicleBrand::select('id','brand_name');
 
             if(!empty($name)){
                 $vehicle_brand_awal = $vehicle_brand_awal->where("vehicle_brand.brand_name","like","%".$name."%");
             }
-           $vehicle_brand = $vehicle_brand_awal->paginate($request->query('limit') ?? 20);
+           $vehicle_brand = $vehicle_brand_awal->paginate($request->query('limit') ?? 100);
         }else{
             $vehicle_brand = VehicleBrand::paginate($request->query('limit') ?? Constant::LIMIT_PAGINATION);
         }
@@ -60,15 +60,15 @@ class VehicleBrandController extends Controller
     {
         Validate::request($request->all(), [
             'brand_name'   => 'required|string',
-           
+
         ]);
 
         $brand_name   = strtoupper($request->brand_name);
 
         try {
             $vehicle_brand = VehicleBrand::create([
-                'brand_name'         => $brand_name, 
-            ]); 
+                'brand_name'         => $brand_name,
+            ]);
 
             $dataraw = '';
             $reason  = 'Create Vehicle Brand #';
@@ -121,12 +121,12 @@ class VehicleBrandController extends Controller
         ]);
 
         $brand_name   = strtoupper($request->brand_name);
-      
+
         try {
             $vehicles = VehicleBrand::where('id', $id)
                 ->update([
                     'brand_name'    => $brand_name
-                ]);     
+                ]);
 
             $dataraw = '';
             $reason  = 'Update Vehicle Brand #';
@@ -148,7 +148,7 @@ class VehicleBrandController extends Controller
      */
     public function destroy($id)
     {
-        $VehicleBrand = VehicleBrand::destroy($id); 
+        $VehicleBrand = VehicleBrand::destroy($id);
 
         if ($VehicleBrand > 0){
             $dataraw = '';
