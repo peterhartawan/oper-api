@@ -58,6 +58,14 @@ class DashboardController extends Controller
                                 ->where('order.order_status', Constant::ORDER_INPROGRESS)
                                 ->where('order_type_idorder_type', Constant::ORDER_TYPE_EMPLOYEE);
 
+        $ordercanceled     = $this->switchOrderConnection($identerprise)->selectRaw('count(*) as order_canceled')
+                                ->where('order.order_status', Constant::ORDER_CANCELED)
+                                ->whereNotIn('order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+
+        $taskcanceled      = $this->switchOrderConnection($identerprise)->selectRaw('count(*) as task_canceled')
+                                ->where('order.order_status', Constant::ORDER_CANCELED)
+                                ->where('order_type_idorder_type', Constant::ORDER_TYPE_EMPLOYEE);
+
         $ordercomplete      = $this->switchOrderConnection($identerprise)->selectRaw('count(*) as order_complete')
                                 ->where('order.order_status', Constant::ORDER_COMPLETED)
                                 ->whereNotIn('order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
@@ -123,11 +131,15 @@ class DashboardController extends Controller
                     ->where('users.vendor_idvendor',$user->vendor_idvendor);
                 $orderinprogress = $orderinprogress->join('users','order.created_by','users.id')
                     ->where('users.vendor_idvendor',$user->vendor_idvendor);
+                $ordercanceled = $ordercanceled->join('users','order.created_by','users.id')
+                    ->where('users.vendor_idvendor',$user->vendor_idvendor);
                 $ordercomplete   = $ordercomplete->join('users','order.created_by','users.id')
                     ->where('users.vendor_idvendor',$user->vendor_idvendor);
                 $tasklist       = $tasklist->join('users','order.created_by','users.id')
                     ->where('users.vendor_idvendor',$user->vendor_idvendor);
                 $taskinprogress = $taskinprogress->join('users','order.created_by','users.id')
+                    ->where('users.vendor_idvendor',$user->vendor_idvendor);
+                $taskcanceled = $taskcanceled->join('users','order.created_by','users.id')
                     ->where('users.vendor_idvendor',$user->vendor_idvendor);
                 $taskcomplete   = $taskcomplete->join('users','order.created_by','users.id')
                     ->where('users.vendor_idvendor',$user->vendor_idvendor);
@@ -163,21 +175,25 @@ class DashboardController extends Controller
 
                 $orderlist          = $orderlist->wherein('order.client_userid',$array);
                 $orderinprogress    = $orderinprogress->wherein('order.client_userid',$array);
+                $ordercanceled      = $ordercanceled->wherein('order.client_userid',$array);
                 $ordercomplete      = $ordercomplete->wherein('order.client_userid',$array);
 
                 $tasklist           = $tasklist->wherein('order.client_userid',$array);
                 $taskinprogress     = $taskinprogress->wherein('order.client_userid',$array);
+                $taskcanceled       = $taskcanceled->wherein('order.client_userid',$array);
                 $taskcomplete       = $taskcomplete->wherein('order.client_userid',$array);
             break;
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
                 $orderlist       = $orderlist->where('client_enterprise_identerprise', $user->client_enterprise_identerprise);
                 $orderinprogress = $orderinprogress->where('dispatcher_userid',$user->id);
+                $ordercanceled   = $ordercanceled->where('dispatcher_userid',$user->id);
                 $ordercomplete   = $ordercomplete->with(['dispatcher'])
                                    ->where('order.dispatcher_userid',$user->id);
 
                 $tasklist       = $tasklist->where('client_enterprise_identerprise', $user->client_enterprise_identerprise);
                 $taskinprogress = $taskinprogress->where('dispatcher_userid',$user->id);
+                $taskcanceled   = $taskcanceled->where('dispatcher_userid',$user->id);
                 $taskcomplete   = $taskcomplete->with(['dispatcher'])
                                     ->where('order.dispatcher_userid',$user->id);
                 $driver         = $driver->where('users.client_enterprise_identerprise', $user->client_enterprise_identerprise);
@@ -187,10 +203,12 @@ class DashboardController extends Controller
             case Constant::ROLE_ENTERPRISE:
                 $orderlist      =  $orderlist->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
                 $orderinprogress=  $orderinprogress->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
+                $ordercanceled  =  $ordercanceled->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
                 $ordercomplete  =  $ordercomplete->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
                 $driver         =  $driver->where('users.client_enterprise_identerprise', $user->client_enterprise_identerprise);
                 $tasklist       =  $tasklist->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
                 $taskinprogress =  $taskinprogress->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
+                $taskcanceled   =  $taskcanceled->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
                 $taskcomplete   =  $taskcomplete->where('client_enterprise_identerprise',$user->client_enterprise_identerprise);
 
             break;
@@ -201,6 +219,7 @@ class DashboardController extends Controller
 
             $orderlist          = $orderlist->whereDate('order.booking_time', $from_date);
             $orderinprogress    = $orderinprogress->whereDate('order.booking_time', $from_date);
+            $ordercanceled      = $ordercanceled->whereDate('order.booking_time', $from_date);
             $ordercomplete      = $ordercomplete->whereDate('order.booking_time', $from_date);
         }
         if ($order_week == Constant::BOOLEAN_TRUE) {
@@ -211,6 +230,9 @@ class DashboardController extends Controller
             $orderinprogress    = $orderinprogress->whereDate('order.booking_time','<=',$NowDate)
             ->whereDate('order.booking_time','>=',$AgoDate);
 
+            $ordercanceled      = $ordercanceled->whereDate('order.booking_time','<=',$NowDate)
+            ->whereDate('order.booking_time','>=',$AgoDate);
+
             $ordercomplete      = $ordercomplete->whereDate('order.booking_time','<=',$NowDate)
             ->whereDate('order.booking_time','>=',$AgoDate);
 
@@ -219,6 +241,7 @@ class DashboardController extends Controller
             $month              = Carbon::parse()->format('m');
             $orderlist          = $orderlist->whereMonth('order.booking_time', $month);
             $orderinprogress    = $orderinprogress->whereMonth('order.booking_time', $month);
+            $ordercanceled      = $ordercanceled->whereMonth('order.booking_time', $month);
             $ordercomplete      = $ordercomplete->whereMonth('order.booking_time', $month);
         }
 
@@ -227,6 +250,7 @@ class DashboardController extends Controller
 
             $tasklist           = $tasklist->whereDate('order.booking_time', $from_date);
             $taskinprogress     = $taskinprogress->whereDate('order.booking_time', $from_date);
+            $taskcanceled       = $taskcanceled->whereDate('order.booking_time', $from_date);
             $taskcomplete       = $taskcomplete->whereDate('order.booking_time', $from_date);
         }
 
@@ -238,7 +262,10 @@ class DashboardController extends Controller
             $taskinprogress     = $taskinprogress->whereDate('order.booking_time','<=',$NowDate)
                                     ->whereDate('order.booking_time','>=',$AgoDate);
 
-            $taskcomplete     = $taskcomplete->whereDate('order.booking_time','<=',$NowDate)
+            $taskcanceled       = $taskcanceled->whereDate('order.booking_time','<=',$NowDate)
+                                    ->whereDate('order.booking_time','>=',$AgoDate);
+
+            $taskcomplete       = $taskcomplete->whereDate('order.booking_time','<=',$NowDate)
                                     ->whereDate('order.booking_time','>=',$AgoDate);
             // dd($tasklist);
         }
@@ -246,15 +273,18 @@ class DashboardController extends Controller
             $month  = Carbon::parse()->format('m');
             $tasklist       = $tasklist->whereMonth('order.booking_time', $month);
             $taskinprogress = $taskinprogress->whereMonth('order.booking_time', $month);
+            $taskcanceled   = $taskcanceled->whereMonth('order.booking_time', $month);
             $taskcomplete   = $taskcomplete->whereMonth('order.booking_time', $month);
         }
 
 
         $orderlist          = $orderlist->first();
         $orderinprogress    = $orderinprogress->first();
+        $ordercanceled      = $ordercanceled->first();
         $ordercomplete      = $ordercomplete->first();
         $tasklist           = $tasklist->first();
         $taskinprogress     = $taskinprogress->first();
+        $taskcanceled       = $taskcanceled->first();
         $taskcomplete       = $taskcomplete->first();
         $vendor             = $vendor->first();
         $enterpriseplus     = $enterpriseplus->first();
@@ -275,9 +305,11 @@ class DashboardController extends Controller
             case Constant::ROLE_SUPERADMIN:
                 $report->total_order_open = $orderlist->order_list;
                 $report->total_order_inprogress = $orderinprogress->order_inprogress;
+                $report->total_order_canceled = $ordercanceled->order_canceled;
                 $report->total_order_complete = $ordercomplete->order_complete;
                 $report->total_task_open = $tasklist->task_list;
                 $report->total_task_inprogress = $taskinprogress->task_inprogress;
+                $report->total_task_canceled = $taskcanceled->task_canceled;
                 $report->total_task_complete = $taskcomplete->task_complete;
                 $report->total_vendor = $vendor->total_vendor;
                 $report->total_driver = $driver->total_driver;
@@ -302,6 +334,8 @@ class DashboardController extends Controller
                 $report->total_driver_pkwt_backup = $driverpkwt->total_driver_pkwt;
                 $report->total_driver_contract = $drivercontract->total_driver_contract;
                 $report->total_driver_freelance = $driverfree->total_driver_freelance;
+                $report->total_order_canceled = $ordercanceled->order_canceled;
+                $report->total_task_canceled = $taskcanceled->task_canceled;
 
             break;
 
@@ -313,6 +347,8 @@ class DashboardController extends Controller
                 $report->total_task_open = $tasklist->task_list;
                 $report->total_task_inprogress = $taskinprogress->task_inprogress;
                 $report->total_task_complete = $taskcomplete->task_complete;
+                $report->total_order_canceled = $ordercanceled->order_canceled;
+                $report->total_task_canceled = $taskcanceled->task_canceled;
             break ;
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER:
@@ -322,6 +358,8 @@ class DashboardController extends Controller
                 $report->total_task_open = $tasklist->task_list;
                 $report->total_task_inprogress = $taskinprogress->task_inprogress;
                 $report->total_task_complete = $taskcomplete->task_complete;
+                $report->total_order_canceled = $ordercanceled->order_canceled;
+                $report->total_task_canceled = $taskcanceled->task_canceled;
                 // $report->total_dispatcher_reguler = $disreg->dispatcher_reguler;
                 // $report->total_enterprise_regular = $enterprisereg->total_enterprisereg;
             break;
@@ -335,6 +373,8 @@ class DashboardController extends Controller
                 $report->total_task_complete = $taskcomplete->task_complete;
                 $report->total_driver = $driver->total_driver;
                 $report->total_employee = $employee->total_employee;
+                $report->total_order_canceled = $ordercanceled->order_canceled;
+                $report->total_task_canceled = $taskcanceled->task_canceled;
             break;
 
         }
