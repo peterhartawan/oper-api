@@ -525,20 +525,6 @@ class OrderController extends Controller
             throw new ApplicationException("orders.failure_cancel_order");
         }
 
-        if ($data_order->order_status == Constant::ORDER_INPROGRESS) {
-            //cek apakah order task sudah di proses atau belum
-            $assign_order = OrderTasks::where("order_idorder", $request->idorder)
-                ->where(function ($q) {
-                    $q->where('order_task_status', Constant::ORDER_TASK_COMPLETED)
-                        ->orWhere('order_task_status', Constant::ORDER_TASK_SKIPPED);
-                })
-                ->get();
-
-            if ($assign_order->count() > 0) {
-                throw new ApplicationException("orders.failure_cancel_order");
-            }
-        }
-
         //update status order
         $order->update([
             'order_status'  => Constant::ORDER_CANCELED,
@@ -923,14 +909,20 @@ class OrderController extends Controller
         switch ($user->idrole) {
 
             case Constant::ROLE_SUPERADMIN:
-                $order = DB::table('order')
-                    ->join('order_type', 'order.order_type_idorder_type', 'order_type.idorder_type')
+                $order = $order_connection
+                    ->with(['order_type'])
                     ->where('order_status', $order_status)
-                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+                    ->whereNotIn('order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+
 
                 if (!empty($vendor)) {
-                    $order = $order->Join('users', 'order.created_by', '=', 'users.id')
-                        ->where('users.vendor_idvendor', $vendor);
+                    $user_ids = User::where('vendor_idvendor', $vendor)
+                        ->pluck('id')->toArray();
+
+                    $order = Order::on('mysql')
+                        ->whereIn('created_by', $user_ids)
+                        ->whereNotIn('order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order_status', $order_status);
                 }
                 break;
 
@@ -1061,7 +1053,8 @@ class OrderController extends Controller
                 DB::Raw(
                     "IF(order.order_status = 1, 'Open',
                     IF(order.order_status = 2, 'In Progress',
-                    IF(order.order_status = 3, 'Completed', 'Unknown'))) as status_text"));
+                    IF(order.order_status = 3, 'Completed',
+                    IF(order.order_status = 5, 'Canceled', 'Unknown')))) as status_text"));
 
         $order = $order->get();
         array_walk($order, function (&$v, $k) {
@@ -1121,6 +1114,9 @@ class OrderController extends Controller
                 $order_inprogress = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+                $order_canceled = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
                 $order_success    = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_COMPLETED)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
@@ -1130,6 +1126,9 @@ class OrderController extends Controller
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
                 $order_inprogress_list = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+                $order_canceled_list = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
                 $order_success_list    = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_COMPLETED)
@@ -1144,9 +1143,14 @@ class OrderController extends Controller
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
 
-
                 $order_inprogress = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                    ->Join('users', 'order.created_by', '=', 'users.id')
+                    ->where('users.vendor_idvendor', $user->vendor_idvendor)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+
+                $order_canceled = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
                     ->Join('users', 'order.created_by', '=', 'users.id')
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
@@ -1163,9 +1167,14 @@ class OrderController extends Controller
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
 
-
                 $order_inprogress_list = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                    ->Join('users', 'order.created_by', '=', 'users.id')
+                    ->where('users.vendor_idvendor', $user->vendor_idvendor)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
+
+                $order_canceled_list = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
                     ->Join('users', 'order.created_by', '=', 'users.id')
                     ->where('users.vendor_idvendor', $user->vendor_idvendor)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE]);
@@ -1189,6 +1198,11 @@ class OrderController extends Controller
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                     ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
+                $order_canceled = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
                 $order_success = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_COMPLETED)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
@@ -1201,6 +1215,11 @@ class OrderController extends Controller
 
                 $order_inprogress_list = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                    ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
+                $order_canceled_list = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                     ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
@@ -1231,6 +1250,11 @@ class OrderController extends Controller
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                     ->wherein('order.client_userid', $array);
 
+                $order_canceled  = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                    ->wherein('order.client_userid', $array);
+
                 $order_success  = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_COMPLETED)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
@@ -1243,6 +1267,11 @@ class OrderController extends Controller
 
                 $order_inprogress_list  = DB::table('order')
                     ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                    ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                    ->wherein('order.client_userid', $array);
+
+                $order_canceled_list  = DB::table('order')
+                    ->where('order.order_status', Constant::ORDER_CANCELED)
                     ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                     ->wherein('order.client_userid', $array);
 
@@ -1265,6 +1294,11 @@ class OrderController extends Controller
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                         ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
+                    $order_canceled       = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_CANCELED)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
                     $order_success          = Order::on('cars24')
                         ->where('order.order_status', Constant::ORDER_COMPLETED)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
@@ -1277,6 +1311,11 @@ class OrderController extends Controller
 
                     $order_inprogress_list   = Order::on('cars24')
                         ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
+                    $order_canceled_list   = Order::on('cars24')
+                        ->where('order.order_status', Constant::ORDER_CANCELED)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                         ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
@@ -1296,6 +1335,11 @@ class OrderController extends Controller
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                         ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
+                    $order_canceled   = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_CANCELED)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
                     $order_success      = DB::table('order')
                         ->where('order.order_status', Constant::ORDER_COMPLETED)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
@@ -1308,6 +1352,11 @@ class OrderController extends Controller
 
                     $order_inprogress_list   = DB::table('order')
                         ->where('order.order_status', Constant::ORDER_INPROGRESS)
+                        ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
+                        ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
+
+                    $order_canceled_list   = DB::table('order')
+                        ->where('order.order_status', Constant::ORDER_CANCELED)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                         ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
 
@@ -1331,17 +1380,21 @@ class OrderController extends Controller
 
             $order_open         = $order_open->whereMonth('order.booking_time', $month);
             $order_inprogress   = $order_inprogress->whereMonth('order.booking_time', $month);
+            $order_canceled     = $order_canceled->whereMonth('order.booking_time', $month);
             $order_success      = $order_success->whereMonth('order.booking_time', $month);
 
 
             $order_open_list         = $order_open_list->whereMonth('order.booking_time', $month);
             $order_inprogress_list   = $order_inprogress_list->whereMonth('order.booking_time', $month);
+            $order_canceled_list     = $order_canceled_list->whereMonth('order.booking_time', $month);
             $order_success_list      = $order_success_list->whereMonth('order.booking_time', $month);
         } else if ($order_date == "week") {
 
             $order_open         = $order_open->whereDate('order.booking_time', '<=', $NowDate)
                 ->whereDate('order.booking_time', '>=', $AgoDate);
             $order_inprogress   = $order_inprogress->whereDate('order.booking_time', '<=', $NowDate)
+                ->whereDate('order.booking_time', '>=', $AgoDate);
+            $order_canceled   = $order_canceled->whereDate('order.booking_time', '<=', $NowDate)
                 ->whereDate('order.booking_time', '>=', $AgoDate);
             $order_success      = $order_success->whereDate('order.booking_time', '<=', $NowDate)
                 ->whereDate('order.booking_time', '>=', $AgoDate);
@@ -1350,16 +1403,20 @@ class OrderController extends Controller
                 ->whereDate('order.booking_time', '>=', $AgoDate);
             $order_inprogress_list   = $order_inprogress_list->whereDate('order.booking_time', '<=', $NowDate)
                 ->whereDate('order.booking_time', '>=', $AgoDate);
+            $order_canceled_list   = $order_canceled_list->whereDate('order.booking_time', '<=', $NowDate)
+                ->whereDate('order.booking_time', '>=', $AgoDate);
             $order_success_list      = $order_success_list->whereDate('order.booking_time', '<=', $NowDate)
                 ->whereDate('order.booking_time', '>=', $AgoDate);
         } else if ($order_date == "today") {
 
             $order_open         = $order_open->whereDate('order.booking_time', '=', $NowDate);
             $order_inprogress   = $order_inprogress->whereDate('order.booking_time', '=', $NowDate);
+            $order_canceled     = $order_canceled->whereDate('order.booking_time', '=', $NowDate);
             $order_success      = $order_success->whereDate('order.booking_time', '=', $NowDate);
 
             $order_open_list         = $order_open_list->whereDate('order.booking_time', '=', $NowDate);
             $order_inprogress_list   = $order_inprogress_list->whereDate('order.booking_time', '=', $NowDate);
+            $order_canceled_list     = $order_canceled_list->whereDate('order.booking_time', '=', $NowDate);
             $order_success_list      = $order_success_list->whereDate('order.booking_time', '=', $NowDate);
         }
 
@@ -1379,6 +1436,14 @@ class OrderController extends Controller
                 }
             );;
 
+        $order_canceled_list  = $order_canceled_list->selectRaw('order.idorder,order.booking_time as tgl_buat')
+            ->get()
+            ->groupBy(
+                function ($date) {
+                    return Carbon::parse($date->tgl_buat)->format('Y-m-d'); // grouping by day
+                }
+            );;
+
         $order_success_list    = $order_success_list->selectRaw('order.idorder,order.booking_time as tgl_buat')
             ->get()
             ->groupBy(
@@ -1391,6 +1456,8 @@ class OrderController extends Controller
         $series_open = [];
         $label_inprogress = [];
         $series_inprogress = [];
+        $label_canceled = [];
+        $series_canceled = [];
         $label_success = [];
         $series_success = [];
 
@@ -1408,15 +1475,18 @@ class OrderController extends Controller
         $tampung = 0;
         $tampung2 = 0;
         $tampung3 = 0;
+        $tampung4 = 0;
 
         while (strtotime($awal) <= strtotime($akhir)) {
             if ($order_date == "month") {
                 $label_open[] = date("d", strtotime($awal));
                 $label_inprogress[] = date("d", strtotime($awal));
+                $label_canceled[] = date("d", strtotime($awal));
                 $label_success[] = date("d", strtotime($awal));
             } else {
                 $label_open[] = date("Y-m-d", strtotime($awal));
                 $label_inprogress[] = date("Y-m-d", strtotime($awal));
+                $label_canceled[] = date("Y-m-d", strtotime($awal));
                 $label_success[] = date("Y-m-d", strtotime($awal));
             }
             $tgl_sekarang  = date("Y-m-d", strtotime($awal));
@@ -1440,6 +1510,15 @@ class OrderController extends Controller
             $series_inprogress[] = $tampung2;
 
 
+            foreach ($order_canceled_list as $key4 => $value4) {
+                $tgl = date("Y-m-d", strtotime($key4));
+                if ($tgl_sekarang == $tgl) {
+                    $tampung4 = count($value4);
+                }
+            }
+            $series_canceled[] = $tampung4;
+
+
             foreach ($order_success_list as $key3 => $value3) {
                 $tgl = date("Y-m-d", strtotime($key3));
                 if ($tgl_sekarang == $tgl) {
@@ -1452,6 +1531,7 @@ class OrderController extends Controller
             $tampung = 0;
             $tampung2 = 0;
             $tampung3 = 0;
+            $tampung4 = 0;
         }
 
         $orderObjopen = new \stdClass();
@@ -1462,6 +1542,10 @@ class OrderController extends Controller
         $orderObjinprogress->labels = $label_inprogress;
         $orderObjinprogress->series = $series_inprogress;
 
+        $orderObjcanceled = new \stdClass();
+        $orderObjcanceled->labels = $label_canceled;
+        $orderObjcanceled->series = $series_canceled;
+
         $orderObjsuccess = new \stdClass();
         $orderObjsuccess->labels = $label_success;
         $orderObjsuccess->series = $series_success;
@@ -1469,6 +1553,7 @@ class OrderController extends Controller
         $report                         = new \stdClass();
         $report->order_open             = $order_open->count();
         $report->order_inprogress       = $order_inprogress->count();
+        $report->order_canceled         = $order_canceled->count();
         $report->order_complete         = $order_success->count();
 
 
@@ -1477,7 +1562,8 @@ class OrderController extends Controller
         $grafik->grafik         = new \stdClass();
         $grafik->grafik->open          = $orderObjopen;
         $grafik->grafik->inprogress    = $orderObjinprogress;
-        $grafik->grafik->complete    = $orderObjsuccess;
+        $grafik->grafik->canceled      = $orderObjcanceled;
+        $grafik->grafik->complete      = $orderObjsuccess;
 
 
 
