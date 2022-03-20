@@ -29,6 +29,11 @@ use App\Http\Helpers\EventLog;
 use App\Models\Task;
 
 use App\Exceptions\ApplicationException;
+use App\Helper\MessageHelper;
+use App\Http\Helpers\Notification;
+use App\Models\DriverRequest;
+use App\Models\MobileNotification;
+use Illuminate\Support\Facades\Log;
 
 class DriverController extends Controller
 {
@@ -40,7 +45,7 @@ class DriverController extends Controller
      * @param [string] id
      * @return [json] driver object
      */
-    public function index(Request $request){ 
+    public function index(Request $request){
         //Query param
         $keyword_search     = $request->query('q');
         $driver_type        = $request->query('driver_type');
@@ -49,6 +54,9 @@ class DriverController extends Controller
         $is_dropdown        = $request->query('dropdown') ? $request->query('dropdown')  : Constant::OPTION_DISABLE ;
         $limit              = $request->query('limit');
         $orderBy            = $request->query('orderBy');
+        $places             = $request->query('places');
+        $assign_enterprise  = $request->query('assignenterprise');
+        $idrequest          = $request->query('idrequest');
 
         //User info
         $idvendor_login     = auth()->guard('api')->user()->vendor_idvendor ;
@@ -58,7 +66,7 @@ class DriverController extends Controller
 
         $Drivers            = Driver::where('users.idrole', Constant::ROLE_DRIVER)
                             ->join('users', 'driver.users_id', '=', 'users.id');
-        
+
         //Status
         if(!empty($status)){
             $Drivers = $Drivers->where("users.status",$status);
@@ -68,11 +76,49 @@ class DriverController extends Controller
 
         //Filter by vendor
         if($role_login == Constant::ROLE_VENDOR){
-            $Drivers    = $Drivers->where("users.vendor_idvendor",$idvendor_login);
+            $Drivers     = $Drivers->where("users.vendor_idvendor",$idvendor_login)
+                ->leftjoin('client_enterprise', 'users.client_enterprise_identerprise' , '=', 'client_enterprise.identerprise')
+                ->leftjoin('places', 'places.idplaces','=', 'driver.stay_idplaces');
+
+            //Filter by assign enterprise
+            if(!empty($assign_enterprise) && !empty($places)){
+                $Drivers = $Drivers->select(
+                    'users.*',
+                    'driver.*',
+                    'client_enterprise.name as ce_name',
+                    'places.idplaces as idplaces',
+                    DB::Raw("IF(`users`.`client_enterprise_identerprise` = ". $assign_enterprise .", true, false) as `checked`"),
+                    DB::Raw("IF(`places`.`idplaces` = ". $places .", true, false) as `isplace`"))
+                    ->with(["places" => function($query){
+                        $query->select('idplaces', 'idplaces as value', 'name', 'latitude', 'longitude', 'identerprise');
+                    }])
+                    ->orderBy('checked', 'DESC')
+                    ->orderBy('isplace', 'DESC')
+                    ->orderBy('name', 'ASC');
+            } else {
+                if(!empty($assign_enterprise)){
+                    $Drivers = $Drivers->select(
+                        'users.*',
+                        'driver.*',
+                        'client_enterprise.name as ce_name',
+                        DB::Raw("IF(`users`.`client_enterprise_identerprise` = ". $assign_enterprise .", true, false) as `checked`"))
+                        ->with(["places" => function($query){
+                            $query->select('idplaces', 'idplaces as value', 'name', 'latitude', 'longitude', 'identerprise');
+                        }])
+                        ->orderBy('checked', 'DESC')
+                        ->orderBy('name', 'ASC');
+                } else {
+                    $Drivers = $Drivers->select(
+                        'users.*',
+                        'driver.*',
+                        'client_enterprise.name as ce_name')
+                    ->orderBy('name', 'ASC');
+                }
+            }
         }
 
         //Filter by enterprise
-        if(!empty($identerprise) && in_array($role_login, [Constant::ROLE_SUPERADMIN,Constant::ROLE_VENDOR,Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS])){     
+        if(!empty($identerprise) && in_array($role_login, [Constant::ROLE_SUPERADMIN,Constant::ROLE_VENDOR,Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS])){
             $Drivers = $Drivers->where('users.client_enterprise_identerprise',$identerprise);
         }
 
@@ -85,26 +131,27 @@ class DriverController extends Controller
         }
 
         //Filter by driver type
-        if(!empty($driver_type)){     
+        if(!empty($driver_type)){
             if(in_array($user->idrole,[Constant::ROLE_SUPERADMIN,Constant::ROLE_VENDOR,Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER,Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS]))
             {
                 if($driver_type == Constant::DRIVER_TYPE_PKWT){
                     $Drivers = $Drivers->where('drivertype_iddrivertype',Constant::DRIVER_TYPE_PKWT);
-        
+
                 }else if($driver_type == Constant::DRIVER_TYPE_PKWT_BACKUP){
                     $Drivers = $Drivers->where('drivertype_iddrivertype',Constant::DRIVER_TYPE_PKWT_BACKUP);
-        
+
                 }else if($driver_type == Constant::DRIVER_TYPE_FREELANCE){
                     $Drivers = $Drivers->where('drivertype_iddrivertype',Constant::DRIVER_TYPE_FREELANCE);
                 }
-            }            
+            }
         }
         //Dropdown
         if ($is_dropdown == Constant::OPTION_ENABLE) {
             //hardcode karena FE blm ada dropdown search
             $limit = 500;
 
-            $Drivers = $Drivers->select('users.id','users.name');
+            if(empty($assign_enterprise))
+                $Drivers = $Drivers->select('users.id','users.name');
 
             //Search
             if(!empty($keyword_search))
@@ -122,7 +169,6 @@ class DriverController extends Controller
         }
 
         //OrderBy
-        $Drivers->orderBy('iddriver', $orderBy ?? 'DESC');
         $Drivers = $Drivers->get();
         array_walk($Drivers, function (&$v, $k) {
             foreach ($v as $item) {
@@ -138,9 +184,9 @@ class DriverController extends Controller
         $page = $request->page ? $request->page : 1 ;
         $perPage = $request->query('limit')?? Constant::LIMIT_PAGINATION;
         $all_driver = collect($Drivers);
-        $driver_new = new Paginator($all_driver->forPage($page, $perPage), $all_driver->count(), $perPage, $page); 
+        $driver_new = new Paginator($all_driver->forPage($page, $perPage), $all_driver->count(), $perPage, $page);
         $driver_new = $driver_new->setPath(url()->full());
-        
+
         return Response::success($driver_new);
         // return Response::success($Drivers->paginate($limit ?? Constant::LIMIT_PAGINATION));
     }
@@ -161,7 +207,7 @@ class DriverController extends Controller
      */
     public function store(Request $request)
     {
-        
+
         Validate::request($request->all(), [
             'name'=> 'required|min:3|max:45|string' ,
             'birthdate' => 'required',
@@ -176,15 +222,15 @@ class DriverController extends Controller
         ]);
 
         DB::beginTransaction();
-        try {  
+        try {
             $idvendor = auth()->guard('api')->user()->vendor_idvendor;
             $pass = rand(12345678,45678910);
-            
+
             if($request->hasfile('photo')){
                 $path = Storage::putFile("/public/images/users", $request->file('photo'));
             }else{
                 $path = '';
-            } 
+            }
 
             $user = User::create([
                 'name'  => $request->name,
@@ -197,7 +243,7 @@ class DriverController extends Controller
                 'status'    => constant::STATUS_ACTIVE,
                 'created_by'=> $request->user()->id
             ]);
-            
+
             $Driver = Driver::create([
                 'users_id' => $user->id,
                 'birthdate' => $request->birthdate,
@@ -208,10 +254,10 @@ class DriverController extends Controller
                 'attendance_latitude' => $request->attendance_latitude,
                 'attendance_longitude' => $request->attendance_longitude,
                 'created_by'=> $request->user()->id
-            ]);              
+            ]);
 
-           
-                        
+
+
             $Drivers    = Driver::with(["user","drivertype"])
                         ->where('driver.users_id', $user->id)
                         ->first();
@@ -248,10 +294,10 @@ class DriverController extends Controller
         $Drivers = Driver::select('driver.*', 'users.*')->with(["enterprise"])
             ->where('users.id', $id)
             ->whereIn('users.status', [Constant::STATUS_ACTIVE, Constant::STATUS_INACTIVE, Constant::STATUS_SUSPENDED])
-            ->join('users', 'driver.users_id', '=', 'users.id')->first();           
-       
+            ->join('users', 'driver.users_id', '=', 'users.id')->first();
+
         if(empty($Drivers)){
-            throw new ApplicationException("errors.entity_not_found", ['entity' => 'iddriver','id' => $id]);            
+            throw new ApplicationException("errors.entity_not_found", ['entity' => 'iddriver','id' => $id]);
         }
 
         // change image url to laravel path
@@ -259,7 +305,7 @@ class DriverController extends Controller
             $Drivers->profile_picture = Storage::url($Drivers->profile_picture);
             $Drivers->profile_picture = env('BASE_API').$Drivers->profile_picture;
         }
-        
+
         return Response::success($Drivers);
     }
 
@@ -279,7 +325,7 @@ class DriverController extends Controller
      * @return [string] message
      */
     public function update(Request $request, $id)
-    {           
+    {
         Validate::request($request->all(), [
             'name'          => 'required|min:3|max:45|string' ,
             'birthdate'     => 'required',
@@ -306,26 +352,26 @@ class DriverController extends Controller
                 throw new ApplicationException("errors.entity_not_found", ['entity' => 'Driver', 'id' => $id]);
 
             $Users    = User::where('id',$id)->first();
-    
+
             if($Drivers->drivertype_iddrivertype!=$request->typedriver){
-                
-                if($request->typedriver==Constant::DRIVER_TYPE_PKWT){                       
+
+                if($request->typedriver==Constant::DRIVER_TYPE_PKWT){
                     $update_user = $Users->update([
                         'client_enterprise_identerprise'=> $request->identerprise,
                         'updated_by'        => $request->user()->id
-                    ]); 
+                    ]);
                 }else{
                     $update_user = $Users->update([
                         'client_enterprise_identerprise'=> null,
                         'updated_by'        => $request->user()->id
-                    ]); 
+                    ]);
                 }
                 $update1  = $Drivers->update([
                     'drivertype_iddrivertype'       => $request->typedriver,
                     'updated_by'        => $request->user()->id
-                ]); 
+                ]);
             }
-            
+
             if($request->hasfile('photo')){
                 $path = Storage::putFile("/public/images/users", $request->file('photo'));
                 $user       = $Users->update([
@@ -333,7 +379,7 @@ class DriverController extends Controller
                     'updated_by'        => $request->user()->id
                 ]);
             }
-            
+
             $update = $Drivers->update([
                         'birthdate'         => $request->birthdate,
                         'address'           => $request->address,
@@ -342,7 +388,7 @@ class DriverController extends Controller
                         'attendance_latitude'   => $request->attendance_latitude,
                         'attendance_longitude'  => $request->attendance_longitude,
                         'updated_by'        => $request->user()->id
-                    ]);   
+                    ]);
 
         $user       = $Users->update([
                         'name'              => $request->name,
@@ -360,17 +406,17 @@ class DriverController extends Controller
             $reason  = 'Update Driver user_id#';
             $trxid   = $id;
             $model   = 'driver';
-            EventLog::insertLog($trxid, $reason, $dataraw,$model); 
+            EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
             DB::commit();
-            return Response::success($Drivers);   
+            return Response::success($Drivers);
         } catch (Exception $e) {
             DB::rollBack();
             throw new ApplicationException("drivers.failure_save_driver", ['id' => $id]);
         }
 
     }
-    
+
     /**
      * delete driver
      *
@@ -378,10 +424,10 @@ class DriverController extends Controller
      * @return [string] message
     */
     public function destroy($id)
-    {    
+    {
         $user = User::where('id',$id)->first();
 
-        if($user->status == Constant::STATUS_SUSPENDED ){  
+        if($user->status == Constant::STATUS_SUSPENDED ){
             $jum_transaksi   = Order::where('driver_userid', $id)
                                 ->count();
 
@@ -400,7 +446,7 @@ class DriverController extends Controller
 
             return Response::success(['id' => $id]);
         }else{
-            throw new ApplicationException("drivers.failure_delete_driver", ['id' => $id]);  
+            throw new ApplicationException("drivers.failure_delete_driver", ['id' => $id]);
         }
 
     }
@@ -408,11 +454,11 @@ class DriverController extends Controller
     /**
      * driver type
      *
-     * 
+     *
      * @return [json] driver type
     */
     public function type()
-    {      
+    {
         $type = Drivertype::all();
         return Response::success($type);
     }
@@ -420,12 +466,12 @@ class DriverController extends Controller
     /**
      * get list of available driver by vendor id
      * used for vendor to assign pkwt backup driver to enterprise
-     * 
+     *
      * @return [json] driver type
     */
     public function available(Request $request){
-        
-        if(auth()->guard('api')->user()->vendor_idvendor == null) 
+
+        if(auth()->guard('api')->user()->vendor_idvendor == null)
             throw new ApplicationException('errors.access_denied');
 
         $Drivers = Driver::select('users.name as name', 'users.phonenumber as phonenumber', 'users.email as email','Driver.*')
@@ -441,7 +487,7 @@ class DriverController extends Controller
     /**
      * get list of available driver for order
      * used for vendor to assign pkwt backup driver to enterprise
-     * 
+     *
      * @return [json] driver type
     */
     public function available_for_order(Request $request){
@@ -449,11 +495,11 @@ class DriverController extends Controller
         $name             = $request->query('q');
         $is_dropdown      = $request->query('dropdown') ? $request->query('dropdown') : Constant::OPTION_DISABLE ;
 
-        if(auth()->guard('api')->user()->vendor_idvendor == null) 
+        if(auth()->guard('api')->user()->vendor_idvendor == null)
             throw new ApplicationException('errors.access_denied');
 
         if ($is_dropdown == Constant::OPTION_ENABLE) {
-            
+
             if(!empty($identerprise)){
                 //select driver dengan tipe pkwt dan sesuai client
                 $validasi = Driver::select('users.id as id',DB::raw('CONCAT(users.name, " (", drivertype.name,")") AS name'))
@@ -468,7 +514,7 @@ class DriverController extends Controller
                 if(!empty($name)){
                     $validasi = $validasi->where("users.name","like","%".$name."%");
                 }
-                //tambah validasi checkin 
+                //tambah validasi checkin
                 //pending
                 // $validasi = $validasi->leftJoin('attendance','attendance.users_id','=','users.id')
                 //             ->where("attendance.clock_in",">=",Carbon::today()->toDateString())
@@ -510,13 +556,13 @@ class DriverController extends Controller
                     // }
 
                     $all_Drivers     = collect($Drivers);
-                    $driver_new      = new Paginator($all_Drivers->forPage($page, $perPage), $all_Drivers->count(), $perPage, $page); 
+                    $driver_new      = new Paginator($all_Drivers->forPage($page, $perPage), $all_Drivers->count(), $perPage, $page);
                     $driver_new      = $driver_new->setPath(url()->full());
                     return Response::success($driver_new);
                 }
 
                 $all_validasi      = collect($validasi);
-                $validasi_new      = new Paginator($all_validasi->forPage($page, $perPage), $all_validasi->count(), $perPage, $page); 
+                $validasi_new      = new Paginator($all_validasi->forPage($page, $perPage), $all_validasi->count(), $perPage, $page);
                 $validasi_new      = $validasi_new->setPath(url()->full());
                 return Response::success($validasi_new);
             }else{
@@ -531,7 +577,7 @@ class DriverController extends Controller
             }
         }else{
             $Drivers = Driver::select('users.name as name', 'users.phonenumber as phonenumber', 'users.email as email','driver.*')
-                    ->with("drivertype")            
+                    ->with("drivertype")
                     ->where('users.status',"=",Constant::STATUS_ACTIVE)
                     ->join('users', 'driver.users_id', '=', 'users.id')
                     ->where('vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor)
@@ -560,20 +606,20 @@ class DriverController extends Controller
             Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS,
             Constant::ROLE_DISPATCHER_ONDEMAND
             ];
-        
+
         if( $role_update == Constant::ROLE_SUPERADMIN ){
             $linkurl = env('URL_ADMIN_OPER');
         }
-        elseif( $role_update == Constant::ROLE_VENDOR || $role_update == Constant::ROLE_DRIVER || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS 
+        elseif( $role_update == Constant::ROLE_VENDOR || $role_update == Constant::ROLE_DRIVER || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS
         || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER || $role_update == Constant::ROLE_DISPATCHER_ONDEMAND || $role_update == Constant::ROLE_EMPLOYEE ){
             $linkurl = env('URL_VENDOR');
         }elseif( $role_update == Constant::ROLE_ENTERPRISE  ){
             $ClientEnterprises = ClientEnterprise::where('identerprise',$users->client_enterprise_identerprise)->first();
             $linkurl = $ClientEnterprises->site_url;
         }
-        
-        
-        if($users){    
+
+
+        if($users){
 
             if($role_login == Constant::ROLE_SUPERADMIN){
                     $status   = Constant::OPTION_ENABLE;
@@ -597,18 +643,18 @@ class DriverController extends Controller
             }else{
                 $status = Constant::OPTION_DISABLE;
             }
-            
+
             if($status == Constant::OPTION_ENABLE){
                 if($new_email != $users->email && $new_email != ""){
                     $users->status = Constant::STATUS_INACTIVE;
                     $users->update();
-                
+
                     $checkEmail = User::where('email', $new_email)->first();
                     if ($checkEmail)
                     {
                         throw new ApplicationException("change_email.already_exist", ['email' => $new_email]);
                     }
-                    
+
                     $changeEmail = ChangeEmail::updateOrCreate(
                         ['old_email' => $users->email],
                         [
@@ -617,12 +663,12 @@ class DriverController extends Controller
                             'token'     => str_random(60)
                          ]
                     );
-    
+
                     if ($users && $changeEmail){
                         $users->notify(
                             new EmailActivation($changeEmail->new_email)
                         );
-    
+
                         \Notification::route('mail', $changeEmail->new_email)
                         ->notify(new EmailActivationRequest($changeEmail->token,$linkurl));
                     }
@@ -640,64 +686,202 @@ class DriverController extends Controller
     public function assign_to_enterprise(Request $request){
 
         Validate::request($request->all(), [
-            'identerprise'  => 'integer|required',
-            'userid'        => 'array|required'
+            'identerprise'          => 'integer|required',
+            'userdata'              => 'array|nullable',
+            'userdata.*.id'         => 'integer|required',
+            'userdata.*.idplaces'   => 'integer|required',
+            'unassign_ids'          => 'array|nullable',
+            'idrequest'             => 'integer|nullable',
+            'time'                  => 'string|nullable'
         ]);
 
-        DB::beginTransaction();   
+        // Assign new drivers with the location
+        DB::beginTransaction();
 
         $newlyAddedDrivers = [];
-        foreach ($request->userid as $index => $newDriver){
+        $arrayId = [];
+        $time = $request->time;
+        foreach ($request->userdata as $index => $newDriver){
 
             if($user = User::
-                where("id",$newDriver)
-                ->first()){ 
+                where("id",$newDriver["id"])
+                ->first()){
 
+                array_push($arrayId, $newDriver["id"]);
                 $user->client_enterprise_identerprise = $request->identerprise;
-                $user->update();                
+                $user->update();
 
                 $dataraw = '';
                 $reason  = 'Assign Driver to enterprise #';
-                $trxid   = $newDriver;
+                $trxid   = $newDriver["id"];
                 $model   = 'driver';
                 EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
                 // if current driver status is PKWT Backup update it to PKWT
-                if($driver = Driver::with("user")->where('users_id', $newDriver)
-                    ->first()){     
+                if($driver = Driver::with("user")->where('users_id', $newDriver["id"])
+                    ->first()){
                     if ($driver->drivertype_iddrivertype == constant::DRIVER_TYPE_PKWT_BACKUP){
-                        $driver->updated_by = auth()->guard('api')->user()->id;                       
+                        $driver->updated_by = auth()->guard('api')->user()->id;
                         $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT;
-                        $driver->update();
-                    }   
+                    }
+                    //update location
+                    $driver->stay_idplaces = $newDriver["idplaces"];
+                    //update driver time
+                    if(!empty($time)){
+                        $driver->stay_time = $time;
+                    }
+                    $driver->update();
                     $newlyAddedDrivers[$index] = $driver;
                 }else{
-                    DB::rollBack();   
-                    throw new ApplicationException("drivers.driver_not_found",["id" => $newDriver]);
+                    DB::rollBack();
+                    throw new ApplicationException("drivers.driver_not_found",["id" => $newDriver["id"]]);
                 }
-    
-            }else{   
-                DB::rollBack();         
-                throw new ApplicationException("drivers.driver_not_found",["id" => $newDriver]);
+
+            }else{
+                DB::rollBack();
+                throw new ApplicationException("drivers.driver_not_found",["id" => $newDriver["id"]]);
             }
 
+        }
+
+        // Unassign drivers
+        if(count($request->unassign_ids) > 0){
+            foreach ($request->unassign_ids as $index => $unassignedDriver){
+
+                if($user = User::
+                    where("id",$unassignedDriver)
+                    ->first()){
+
+                    $user->client_enterprise_identerprise = null;
+                    $user->update();
+
+                    $dataraw = '';
+                    $reason  = 'Unassign Driver to enterprise #';
+                    $trxid   = $unassignedDriver;
+                    $model   = 'driver';
+                    EventLog::insertLog($trxid, $reason, $dataraw,$model);
+
+                    // if current driver status is PKWT update it to PKWT Backup
+                    if($driver = Driver::with("user")->where('users_id', $unassignedDriver)
+                        ->first()){
+                        if ($driver->drivertype_iddrivertype == constant::DRIVER_TYPE_PKWT){
+                            $driver->updated_by = auth()->guard('api')->user()->id;
+                            $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT_BACKUP;
+                            $driver->update();
+                        }
+                    }else{
+                        DB::rollBack();
+                        throw new ApplicationException("drivers.driver_not_found",["id" => $unassignedDriver]);
+                    }
+
+                }else{
+                    DB::rollBack();
+                    throw new ApplicationException("drivers.driver_not_found",["id" => $unassignedDriver]);
+                }
+
+            }
         }
 
 
         DB::commit();
 
-        foreach ($request->userid as $index => $newDriver){
 
-                if($user = User::
-                    where("id",$newDriver)
-                    ->first()){ 
-                //send email to driver when assign to client enterprise
+        $idrequest = $request->idrequest;
+        //change request status
+        if(!empty($idrequest)){
+            DriverRequest::where('id', $idrequest)
+                ->update([
+                    'status' => 2
+                ]);
+        }
+
+        //notification by wa to dispatcher
+        //get dispatcher from enterprise id
+        $dispatcher = DB::table('client_enterprise')
+            ->join('users', 'users.client_enterprise_identerprise', '=', 'client_enterprise.identerprise')
+            ->where('client_enterprise.identerprise', $request->identerprise)
+            ->where('users.idrole', Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
+            ->selectRaw('users.phonenumber, users.name')
+            ->first();
+
+        //Get vendor's admin phone number
+        $phoneNumbers = DB::table('client_enterprise')
+            ->where('client_enterprise.identerprise', $request->identerprise)
+            ->join('users', 'client_enterprise.vendor_idvendor' , '=', 'users.vendor_idvendor')
+            ->where('users.idrole', Constant::ROLE_VENDOR)
+            ->selectRaw('users.phonenumber, users.name')
+            ->get();
+
+        //get sorted driver data with location
+        $drivers = DB::table('driver')
+            ->join('users', 'users.id', '=', 'driver.users_id')
+            ->join('places', 'idplaces', '=', 'stay_idplaces')
+            ->whereIn('users.id', $arrayId)
+            ->selectRaw('places.idplaces as id, users.name as name, places.name as location, users.phonenumber as phonenumber, driver.stay_time as time')
+            ->orderBy('id', 'ASC')
+            ->get();
+
+        // dd($drivers);
+
+        if(!empty($time))
+            $date = $time;
+        else
+            $date = Carbon::tomorrow()->format('d-m-Y');
+
+        $listDriverString = "";
+        $listLocation = [];
+        $iter = 0;
+
+        foreach($drivers as $index => $driver){
+            if(array_search($driver->id, $listLocation, true) === false){
+                $driverCount = $drivers->where('location', $driver->location)->count();
+                $iter = 1;
+                array_push($listLocation, $driver->id);
+                $listDriverString = $listDriverString . ("\n{$driver->location}, {$driverCount} driver:\n");
+            }
+            $listDriverString = $listDriverString . ("{$iter}.{$driver->name} {$driver->phonenumber}\n");
+            $iter++;
+        }
+
+        $messaging = new MessageHelper();
+
+        try{
+            //vendor notification
+            foreach ($phoneNumbers as $key => $value) {
+                $messaging->sendMessage(
+                    MessageHelper::WHATSAPP,
+                    $value->phonenumber,
+                    (
+                        "Halo, {$value->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
+                        . $listDriverString
+                    )
+                );
+            }
+            //dispatcher notification
+            $messaging->sendMessage(
+                MessageHelper::WHATSAPP,
+                $dispatcher->phonenumber,
+                (
+                    "Halo, {$dispatcher->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
+                    . $listDriverString
+                )
+            );
+        } catch (Exception $e) {
+            throw new ApplicationException("notifications.failure");
+        }
+
+        foreach ($drivers as $index => $driver){
+
+            if($user = User::
+                where("id",$driver->id)
+                ->first()){
+                // send email to driver when assign to client enterprise
                 $detailEnterprise = User::where('idrole', Constant::ROLE_ENTERPRISE)
                         ->with(["enterprise","role"])
                         ->where('client_enterprise_identerprise', $request->identerprise)
-                        ->first();   
+                        ->first();
 
-                $enterprise = 
+                $enterprise =
                 [
                     'greeting' => 'Assign Driver To Client Enterprise',
                     'line' => [
@@ -715,21 +899,42 @@ class DriverController extends Controller
                 $user->notify(
                     new AssignDriversToClient($enterprise)
                 );
+
+                //Mobile app notification
+                $tokenMobile = MobileNotification::where("user_id", $driver->id)
+                    ->first();
+
+                $fcmRegIds = array();
+
+                if (!empty($tokenMobile))
+                    array_push($fcmRegIds, $tokenMobile->token);
+
+                if ($fcmRegIds) {
+                    $title           = "Update Waktu dan Lokasi Stay";
+                    $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu: {$driver->time}";
+                    $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
+                    $returnsendorder = Notification::sendNotification($getGenNotif);
+                    if ($returnsendorder == false) {
+                        Log::critical("failed send Notification  : {$driver->id} ");
+                    }
+                } else {
+                    Log::critical("failed send Notification  : {$driver->id} ");
+                }
             }
         }
 
         return Response::success($newlyAddedDrivers);
     }
 
-  
+
     /**
-     * id user driver 
+     * id user driver
      *
-     * 
+     *
      * @return [json] driver type
     */
     public function resendpin(Request $request)
-    {      
+    {
         Validate::request($request->all(), [
             'id_user' => 'required|integer|exists:users,id'
         ]);
@@ -742,23 +947,23 @@ class DriverController extends Controller
                 $Drivers = Driver::select('driver.*', 'users.*')
                         ->where('users.id', $request->id_user)
                         ->join('users', 'driver.users_id', '=', 'users.id')
-                        ->first(); 
+                        ->first();
             break;
 
-            case Constant::ROLE_VENDOR:   
+            case Constant::ROLE_VENDOR:
                 $Drivers = Driver::select('driver.*', 'users.*')
                         ->where('users.id', $request->id_user)
                         ->join('users', 'driver.users_id', '=', 'users.id')
                         ->Where('users.vendor_idvendor', auth()->guard('api')->user()->vendor_idvendor)
-                        ->first(); 
+                        ->first();
             break;
 
             default:
             break;
-        }       
-       
+        }
+
         if(empty($Drivers)){
-            throw new ApplicationException("errors.entity_not_found", ['entity' => 'id user driver','id' => $request->id_user]);            
+            throw new ApplicationException("errors.entity_not_found", ['entity' => 'id user driver','id' => $request->id_user]);
         }
 
 
@@ -786,14 +991,14 @@ class DriverController extends Controller
         $daterange    = $request->daterange;
 
         if (empty($idtemplate) || empty($daterange)) {
-            throw new ApplicationException("errors.template_daterange");            
+            throw new ApplicationException("errors.template_daterange");
         }
 
         $file_name    = "ReportingDriver".$idtemplate."-".$daterange.".xlsx";
         Excel::store(new ReportingDriver($idtemplate, $daterange), '/public/file/' . $file_name);
         $fileexport = Storage::url('file/' . $file_name);
         return Response::success(["file export" => url($fileexport) ] );
-       
+
     }
 
     public function totalAccount()
@@ -815,9 +1020,9 @@ class DriverController extends Controller
                         ->where('users.idrole', Constant::ROLE_DRIVER)
                         ->where('users.status', Constant::STATUS_SUSPENDED);
 
-        switch ($user->idrole) {           
+        switch ($user->idrole) {
 
-            case Constant::ROLE_VENDOR:  
+            case Constant::ROLE_VENDOR:
                 $driver         = $driver->where("users.vendor_idvendor", $user->vendor_idvendor);
                 $driveractive   = $driveractive->where("users.vendor_idvendor", $user->vendor_idvendor);
                 $driversuspend  = $driversuspend->where("users.vendor_idvendor", $user->vendor_idvendor);

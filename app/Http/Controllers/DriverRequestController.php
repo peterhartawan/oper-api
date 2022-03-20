@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Services\Response;
 use App\Constants\Constant;
 use App\Exceptions\ApplicationException;
+use App\Helper\MessageHelper;
 use DB;
 
 class DriverRequestController extends Controller
@@ -94,9 +95,10 @@ class DriverRequestController extends Controller
         if (!empty($purpose_time)) {
             $data = $data->where('purpose_time', 'like', '%' . $purpose_time . '%');
         }
-        if (!empty($status)) {
-            $data = $data->where('status', '=', $status);
-        }
+        // if (!empty($status)) {
+        //     $data = $data->where('status', '=', $status);
+        // }
+        $data = $data->where('status', 1);
 
         $data = $data->with('enterprise', 'place')->paginate($limit);
 
@@ -149,6 +151,80 @@ class DriverRequestController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             throw new ApplicationException("driver_requests.failure_save_driver_request");
+        }
+
+        $identerprise = $request->get('enterprise_id');
+
+        //Get vendor's admin phone number
+        $phoneNumbers = DB::table('client_enterprise')
+            ->where('client_enterprise.identerprise', $identerprise)
+            ->join('users', 'client_enterprise.vendor_idvendor' , '=', 'users.vendor_idvendor')
+            ->where('users.idrole', Constant::ROLE_VENDOR)
+            ->selectRaw('users.phonenumber, users.name')
+            ->get();
+
+        //get dispatcher from enterprise id
+        $dispatcher = DB::table('client_enterprise')
+            ->join('users', 'users.client_enterprise_identerprise', '=', 'client_enterprise.identerprise')
+            ->where('client_enterprise.identerprise', $identerprise)
+            ->where('users.idrole', Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
+            ->selectRaw('users.phonenumber, users.name')
+            ->first();
+
+        //Get requester name
+        $requester = DB::table('users')
+            ->where('id', $user->id)
+            ->selectRaw('name')
+            ->first();
+
+        //Get enterprise name
+        $enterprise = DB::table('client_enterprise')
+            ->where('identerprise', $identerprise)
+            ->selectRaw('name')
+            ->first();
+
+        //Get request location name
+        $idplace = $request->get('place_id');
+
+        $location = DB::table('places')
+            ->where('idplaces', $idplace)
+            ->selectRaw('name')
+            ->first();
+
+        // dd($vendorUsers->get()->toArray());
+
+        $messaging = new MessageHelper();
+
+        try{
+            //vendor notification
+            foreach ($phoneNumbers as $key => $value) {
+                $messaging->sendMessage(
+                    MessageHelper::WHATSAPP,
+                    $value->phonenumber,
+                    (
+                        "Halo, {$value->name}. Berikut detail request driver oleh {$requester->name}:\n\n\n"
+                        ."Enterprise: {$enterprise->name}\n"
+                        ."Waktu: {$request->get('purpose_time')}\n"
+                        ."Lokasi: {$location->name}\n"
+                        ."Jumlah Driver: {$request->get('number_of_drivers')}\n"
+                        ."Keterangan: {$request->get('note')}"
+                    )
+                );
+            }
+            //dispatcher notification
+            $messaging->sendMessage(
+                MessageHelper::WHATSAPP,
+                $dispatcher->phonenumber,
+                (
+                    "Halo, {$dispatcher->name}. Berikut detail request driver yang telah anda kirim:\n\n\n"
+                    ."Waktu: {$request->get('purpose_time')}\n"
+                    ."Lokasi: {$location->name}\n"
+                    ."Jumlah Driver: {$request->get('number_of_drivers')}\n"
+                    ."Keterangan: {$request->get('note')}"
+                )
+            );
+        } catch (Exception $e) {
+            throw new ApplicationException("notifications.failure");
         }
 
         return Response::success($data);
