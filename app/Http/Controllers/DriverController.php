@@ -817,7 +817,7 @@ class DriverController extends Controller
             ->join('users', 'users.id', '=', 'driver.users_id')
             ->join('places', 'idplaces', '=', 'stay_idplaces')
             ->whereIn('users.id', $arrayId)
-            ->selectRaw('places.idplaces as id, users.name as name, places.name as location, users.phonenumber as phonenumber, driver.stay_time as time')
+            ->selectRaw('users.id as iduser, places.idplaces as id, users.name as name, places.name as location, users.phonenumber as phonenumber, driver.stay_time as time')
             ->orderBy('id', 'ASC')
             ->get();
 
@@ -873,7 +873,7 @@ class DriverController extends Controller
         foreach ($drivers as $index => $driver){
 
             if($user = User::
-                where("id",$driver->id)
+                where("id",$driver->iduser)
                 ->first()){
                 // send email to driver when assign to client enterprise
                 $detailEnterprise = User::where('idrole', Constant::ROLE_ENTERPRISE)
@@ -901,7 +901,7 @@ class DriverController extends Controller
                 );
 
                 //Mobile app notification
-                $tokenMobile = MobileNotification::where("user_id", $driver->id)
+                $tokenMobile = MobileNotification::where("user_id", $driver->iduser)
                     ->first();
 
                 $fcmRegIds = array();
@@ -915,10 +915,10 @@ class DriverController extends Controller
                     $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
                     $returnsendorder = Notification::sendNotification($getGenNotif);
                     if ($returnsendorder == false) {
-                        Log::critical("failed send Notification  : {$driver->id} ");
+                        Log::critical("failed send Notification  : {$driver->iduser} ");
                     }
                 } else {
-                    Log::critical("failed send Notification  : {$driver->id} ");
+                    Log::critical("failed send Notification  : {$driver->iduser} ");
                 }
             }
         }
