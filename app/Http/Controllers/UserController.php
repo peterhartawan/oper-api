@@ -45,7 +45,7 @@ class UserController extends Controller
             'email' => 'required|max:100|email|unique:users',
             'phonenumber' => 'required|string|unique:users',
         ]);
-        
+
         // Only Admin OPER is allowed to create admin oper account
         $role_user_login = auth()->guard('api')->user()->idrole;
         if ($role_user_login != constant::ROLE_SUPERADMIN)
@@ -84,7 +84,7 @@ class UserController extends Controller
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
             DB::commit();
-            
+
             $linkurl = env('URL_ADMIN_OPER');
             if ($user && $passwordReset) {
                 $user->notify(
@@ -147,7 +147,18 @@ class UserController extends Controller
             //query driveer
             $detail_user = User::select(DB::raw("CONCAT('Member Since,',' ',DATE_FORMAT(users.created_at, '%d %M %Y')) as join_date"),"users.*")
                     ->where('id', $userid)
-                    ->with(["role","vendor","enterprise","driver_profile","dispatcher_profile"])
+                    ->with(["role","vendor","enterprise",
+                        "driver_profile" => function($query) {
+                            $query->selectRaw(
+                                    "driver.*, CONCAT('Jam: ', DATE_FORMAT(stay_time, '%H.%i'), ' WIB') as stay_time"
+                                )
+                                ->with(["places" => function($query){
+                                    $query->selectRaw(
+                                        "idplaces, CONCAT('Lokasi Stay: ' , name) as name"
+                                    );
+                                }]);
+                        },
+                        "dispatcher_profile"])
                     ->first();
 
             $driver = Driver::where("users_id", $userid)
@@ -160,7 +171,7 @@ class UserController extends Controller
                 $detail_user->driver_profile->is_on_order = Constant::BOOLEAN_TRUE;
             }else{
                 $detail_user->driver_profile->is_on_order = Constant::BOOLEAN_FALSE;
-            } 
+            }
 
         }
         elseif (in_array($role_login, $employeeRole)) {
@@ -175,7 +186,7 @@ class UserController extends Controller
                 ->join('order','order.employee_userid','=','users.id')
                 ->where('order.order_status',Constant::ORDER_INPROGRESS)
                 ->get();
-            
+
             if(count($employee) > 0){
                 $detail_user->employee_profile->is_on_task = Constant::BOOLEAN_TRUE;
             }else{
@@ -207,7 +218,7 @@ class UserController extends Controller
                             ->with(["role", "vendor", "enterprise", "dispatcher_profile"])
                             ->first();
             }
-            
+
 
         }
          // change image url to laravel path
@@ -215,7 +226,7 @@ class UserController extends Controller
             $detail_user->profile_picture = Storage::url($detail_user->profile_picture);
             $detail_user->profile_picture = env('BASE_API').$detail_user->profile_picture;
         }
-        
+
 
         return Response::success($detail_user);
 
@@ -234,7 +245,7 @@ class UserController extends Controller
             throw new ApplicationException("user.failure_save_user");
         }
     }
-    
+
     public function update(Request $request, $id)
     {
         Validate::request($request->all(), [
@@ -255,20 +266,20 @@ class UserController extends Controller
             Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS,
             Constant::ROLE_DISPATCHER_ONDEMAND
             ];
-        
+
         if( $role_update == Constant::ROLE_SUPERADMIN ){
             $linkurl = env('URL_ADMIN_OPER');
         }
-        elseif( $role_update == Constant::ROLE_VENDOR || $role_update == Constant::ROLE_DRIVER || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS 
+        elseif( $role_update == Constant::ROLE_VENDOR || $role_update == Constant::ROLE_DRIVER || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS
         || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER || $role_update == Constant::ROLE_DISPATCHER_ONDEMAND ){
             $linkurl = env('URL_VENDOR');
         }elseif( $role_update == Constant::ROLE_ENTERPRISE  ){
             $ClientEnterprises = ClientEnterprise::where('identerprise',$users->client_enterprise_identerprise)->first();
             $linkurl = $ClientEnterprises->site_url;
         }
-        
-        
-        if($users){    
+
+
+        if($users){
 
             if($role_login == Constant::ROLE_SUPERADMIN){
                     $status   = Constant::OPTION_ENABLE;
@@ -292,7 +303,7 @@ class UserController extends Controller
             }else{
                 $status = Constant::OPTION_DISABLE;
             }
-            
+
             if($status == Constant::OPTION_ENABLE){
                 if($new_email != $users->email && $new_email != ""){
 
@@ -301,7 +312,7 @@ class UserController extends Controller
                     {
                         throw new ApplicationException("change_email.already_exist", ['email' => $new_email]);
                     }
-                    
+
                     $users->name        = $request->name;
 
                     if ($users->phonenumber != $request->phonenumber) {
@@ -310,7 +321,7 @@ class UserController extends Controller
 
                     $users->status      = Constant::STATUS_INACTIVE;
                     $users->update();
-                    
+
                     $linkurl = env('URL_ADMIN_OPER');
 
                     $changeEmail = ChangeEmail::updateOrCreate(
@@ -321,12 +332,12 @@ class UserController extends Controller
                             'token'     => str_random(60)
                          ]
                     );
-    
+
                     if ($users && $changeEmail){
                         $users->notify(
                             new EmailActivation($changeEmail->new_email)
                         );
-    
+
                         \Notification::route('mail', $changeEmail->new_email)
                         ->notify(new EmailActivationRequest($changeEmail->token,$linkurl));
                     }
@@ -339,7 +350,7 @@ class UserController extends Controller
 
                     return Response::success($users, 'messages.success_req_change_email');
                 }else{
-                    
+
                     $users->name        = $request->name;
                     $users->phonenumber = $request->phonenumber;
                     $users->update();
@@ -358,17 +369,17 @@ class UserController extends Controller
         }else{
             throw new ApplicationException("user.failure_save_user");
         }
-        
+
     }
 
     public function change_client(Request $request, $id)
     {
-        
+
         Validate::request($request->all(), [
             'id_enterprise' => 'required|int'
         ]);
-                
-        if($users = User::findOrFail($id)){            
+
+        if($users = User::findOrFail($id)){
             $users->client_enterprise_identerprise = $request->client_enterprise_identerprise;
             $users->update();
 
@@ -377,21 +388,21 @@ class UserController extends Controller
             $trxid   = $users->id;
             $model   = 'user';
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
-            
+
             return Response::success($users);
-        }else{            
+        }else{
             throw new ApplicationException("user.failure_save_user");
         }
     }
 
     public function change_vendor(Request $request, $id)
     {
-        
+
         Validate::request($request->all(), [
             'id_vendor' => 'required|int'
         ]);
-                
-        if($users = User::findOrFail($id)){            
+
+        if($users = User::findOrFail($id)){
             $users->vendor_idvendor = $request->vendor_idvendor;
             $users->update();
 
@@ -402,7 +413,7 @@ class UserController extends Controller
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
             return Response::success($users);
-        }else{            
+        }else{
             throw new ApplicationException("user.failure_save_user");
         }
     }
@@ -440,7 +451,7 @@ class UserController extends Controller
             'old_password' => 'required|string',
             'password' => 'required|string|confirmed|between:8,16'
         ]);
-        
+
         $user = User::find(auth()->guard('api')->user()->id);
 
         if(!Hash::check($request->old_password, $user->password)){
@@ -448,7 +459,7 @@ class UserController extends Controller
         }
 
         $id = $request->user()->id;
-        if($users = User::findOrFail($id)){            
+        if($users = User::findOrFail($id)){
             $users->password = bcrypt($request->password);
             $users->update();
 
@@ -459,7 +470,7 @@ class UserController extends Controller
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
             return Response::success($users);
-        }else{            
+        }else{
             throw new ApplicationException("user.failure_save_user");
         }
     }
@@ -507,13 +518,13 @@ class UserController extends Controller
             if (!in_array($actor_update->idrole , $vendorUnderRole))
                 throw new ApplicationException("errors.access_denied");
         }
-        
+
         try {
             $users  = User::where('id', $id)
                 ->where('status',"=",Constant::STATUS_ACTIVE)
                 ->update([
                     'status' => Constant::STATUS_SUSPENDED,
-                    'reason_suspend' => $reason_suspend,                    
+                    'reason_suspend' => $reason_suspend,
                     'updated_by' => $request->user()->id,
                 ]);
 
@@ -536,7 +547,7 @@ class UserController extends Controller
             }else{
                 throw new ApplicationException("user.failed_to_suspend", ['id' => $id]);
             }
-            
+
         } catch (Exception $e) {
             throw new ApplicationException("user.failed_to_suspend", ['id' => $id]);
         }
@@ -584,15 +595,15 @@ class UserController extends Controller
                 ->whereIn('status',[Constant::STATUS_SUSPENDED,Constant::STATUS_INACTIVE])
                 ->update([
                     'status' => Constant::STATUS_ACTIVE,
-                    'reason_suspend' => null,                    
+                    'reason_suspend' => null,
                     'updated_by' => $request->user()->id,
                 ]);
-        
+
             if ($users > 0) {
                 if ($users)
                     $user = User::where('users.id', $id)->first();
                     $user->notify(new UserNotification("Your account has been activated"));
-                    
+
                     $dataraw = '';
                     $reason  = 'Activate user ';
                     $trxid   = $user->id;
@@ -604,7 +615,7 @@ class UserController extends Controller
             }else{
                 throw new ApplicationException("user.failed_to_activate", ['id' => $id]);
             }
-            
+
         } catch (Exception $e) {
             throw new ApplicationException("user.failed_to_activate", ['id' => $id]);
         }
@@ -615,9 +626,9 @@ class UserController extends Controller
     {
         try {
             $count_user = User::where('id', $id)->first();
-            
+
             if(empty($count_user)){
-                throw new ApplicationException("errors.entity_not_found", ['entity' => 'User','id' => $id]);            
+                throw new ApplicationException("errors.entity_not_found", ['entity' => 'User','id' => $id]);
             }
 
             $users = false;
@@ -641,13 +652,13 @@ class UserController extends Controller
                     $jum_user   = User::where('client_enterprise_identerprise', $count_user->client_enterprise_identerprise)
                                     ->where('idrole',Constant::ROLE_ENTERPRISE)
                                     ->count();
-                                    
+
                     if($jum_user == 1){
                         throw new ApplicationException("user.user_only_one", ['id' => $id]);
                     }
 
                     //cek user suspend tidak
-                    if($count_user->status != Constant::STATUS_SUSPENDED ){ 
+                    if($count_user->status != Constant::STATUS_SUSPENDED ){
                         throw new ApplicationException("user.failure_delete_user_not_suspend", ['id' => $id]);
                     }
 
@@ -663,7 +674,7 @@ class UserController extends Controller
                             ->where('status',Constant::STATUS_SUSPENDED)
                             ->delete();
                     break;
-                
+
                 default:
                     throw new ApplicationException("user.failure_delete_user");
                     break;

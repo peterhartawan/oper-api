@@ -61,7 +61,8 @@ class Driver extends Model
         'status',
 		'insurance_policy_number',
 		'attendance_latitude',
-		'attendance_longitude'
+		'attendance_longitude',
+        'stay_idplaces'
 	];
 
 	public function drivertype()
@@ -85,4 +86,9 @@ class Driver extends Model
 		return $this->hasOne('App\Models\ClientEnterprise', 'identerprise', 'client_enterprise_identerprise')
 		->with("enterprise_type");
 	}
+
+    public function places()
+    {
+        return $this->hasOne(\App\Models\Places::class, 'idplaces', 'stay_idplaces');
+    }
 }
