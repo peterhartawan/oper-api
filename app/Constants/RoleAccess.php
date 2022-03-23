@@ -129,7 +129,8 @@ class RoleAccess
         "WebNotificationController" => "all",
         "ImportController" => ["importOrder"],
         "AttendanceController" => ["show", "reporting"],
-        "DriverRequestController" => "all"
+        "DriverRequestController" => "all",
+        "AttendanceRequestController" => "all"
     ];
 
     const DISPATCHER_ONDEMAND = [
@@ -157,7 +158,8 @@ class RoleAccess
         "FaqController" => ["index"],
         "TrackingController" => ["store"],
         "MobileNotificationController" => "all",
-        "MobileCheckUpdateController" => "all"
+        "MobileCheckUpdateController" => "all",
+        "AttendanceRequestController" => "all"
     ];
 
     const EMPLOYEE = [

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Attendance;
+use App\Models\AttendanceRequest;
 use App\Models\Driver;
 use App\Models\Employee;
 use App\Models\Places;
@@ -406,11 +407,22 @@ class AttendanceController extends Controller
 
     public function last_status()
     {
+        //Check if driver already requested for attendance today
+        $checkRequest = AttendanceRequest
+            ::where('created_by', auth()->guard('api')->user()->id)
+            ->where("datetime",">=",Carbon::today()->toDateString())
+            ->whereNull("approved_by")
+            ->first();
+
         $attendance = Attendance::where("users_id",auth()->guard('api')->user()->id)
                         ->whereDate("clock_in",Carbon::today()->toDateString())
                         ->first();
 
         $nextAction = "";
+        if(!empty($checkRequest)){
+            $nextAction = "requesting";
+            return Response::success(["next_action"=>$nextAction,"last_attendance"=>$attendance]);
+        }
         if(empty($attendance->clock_in)){
             $attendance2 = Attendance::where("users_id",auth()->guard('api')->user()->id)
                 ->whereDate("clock_in","!=",Carbon::today()->toDateString())

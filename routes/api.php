@@ -265,6 +265,14 @@ Route::group([
         Route::post('/{id}', 'DriverRequestController@update');
     });
 
+    Route::group([
+        'prefix' => 'attendance-requests'
+    ], function() {
+        Route::get('reporting', 'AttendanceRequestController@reporting');
+        Route::post('approve', 'AttendanceRequestController@approve');
+        Route::post('cancel', 'AttendanceRequestController@cancel');
+    });
+
     Route::apiResources([
         'user'              => 'UserController',
         'enterprise'        => 'ClientEnterpriseController',
