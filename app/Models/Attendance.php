@@ -9,7 +9,7 @@ use App\Traits\NullToEmptyString;
 class Attendance extends Model
 {
 	use NullToEmptyString;
-    
+
 	protected $table = 'attendance';
 	protected $primaryKey = 'id';
     public $timestamps = true;
@@ -17,9 +17,11 @@ class Attendance extends Model
     protected $fillable = [
         'users_id',
         'clock_in',
+        'clock_in_idplaces',
         'clock_in_latitude',
         'clock_in_longitude',
         'clock_out',
+        'clock_out_idplaces',
         'clock_out_latitude',
         'clock_out_longitude',
         'created_by',
@@ -32,7 +34,7 @@ class Attendance extends Model
 	{
 		return $this->belongsTo(\App\User::class, 'users_id');
     }
-    
+
 	public function driver_profile()
 	{
 		return $this->belongsTo(\App\Models\Driver::class, 'users_id');

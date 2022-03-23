@@ -178,7 +178,9 @@ Route::group([
         Route::get('/', 'AttendanceController@last_status');
         Route::get('/reporting', 'AttendanceController@reporting');
         Route::post('/clock-in', 'AttendanceController@clock_in');
+        Route::post('/clock-in-qr', 'AttendanceController@clock_in_qr');
         Route::post('/clock-out', 'AttendanceController@clock_out');
+        Route::post('/clock-out-qr', 'AttendanceController@clock_out_qr');
         Route::get('/{id}', 'AttendanceController@show');
         Route::delete('/{id}', 'AttendanceController@destroy');
     });

@@ -147,7 +147,7 @@ class RoleAccess
 
     const DRIVER = [
         "AuthController" => "all",
-        "AttendanceController" => ["clock_in", "clock_out", "last_status", "reporting"],
+        "AttendanceController" => ["clock_in", "clock_in_qr", "clock_out", "clock_out_qr", "last_status", "reporting"],
         "UserController" => ["index", "change_password", "update", "me"],
         "PasswordResetController" => "all",
         "StaticContentController" => ["show", "slug"],

@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Models\Attendance;
 use App\Models\Driver;
 use App\Models\Employee;
+use App\Models\Places;
 use App\Models\Vendor;
 use Validator;
 use GuzzleHttp;
@@ -29,6 +30,204 @@ use Illuminate\Support\Facades\Log;
 
 class AttendanceController extends Controller
 {
+
+    public function clock_in_qr(Request $request){
+        Validate::request($request->all(), [
+            'latitude'      => 'nullable|string',
+            'longitude'     => 'nullable|string',
+            'idplaces'      => 'nullable|integer'
+        ]);
+
+        //Validate location
+        $place     = Places::where('idplaces', $request->idplaces)->first();
+
+        if(!$place){
+            //Not a registered place
+            throw new ApplicationException("attendance.failure_clock_in_false_location");
+        }
+
+        $latitude           = $request->latitude;
+        $longitude          = $request->longitude;
+        $place_latitude     = $place->latitude;
+        $place_longitude    = $place->longitude;
+
+        //Check the distance
+        try {
+            $client         = new GuzzleHttp\Client(['http_errors' => false]);
+
+            $url            = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=".$latitude.",".$longitude."&destinations=".$place_latitude.",".$place_longitude."&key=".env('GOOGLE_MAP_API_KEY', '');
+            $request_url    = $client->get($url);
+
+            Log::info($url);
+
+            $response_file  = json_decode($request_url->getBody()->getContents(), true);
+        } catch (Exception $e) {
+            throw new ApplicationException("attendance.failure_clockin");
+        }
+
+        if($response_file['status'] == 'OK'){
+            $jarak = 0;
+            if($response_file['rows'][0]['elements'][0]['status'] && $response_file['rows'][0]['elements'][0]['status'] == 'OK'){
+                $jarak      = $response_file['rows'][0]['elements'][0]['distance']['value'];
+            } else {
+                //No Routes Found, Can't be geocoded, Route is too long
+                throw new ApplicationException("attendance.failure_clock_in_too_far");
+            }
+
+            if($jarak > env('RADIUS')){
+                throw new ApplicationException("attendance.failure_clock_in_too_far");
+            }
+        }else{
+            throw new ApplicationException("attendance.failure_clock_in_setting_lock");
+        }
+
+        //Check if account already checked in
+        $checkAttendance = Attendance::
+                        where('users_id', auth()->guard('api')->user()->id)
+                        ->where("clock_in",">=",Carbon::today()->toDateString());
+
+        $attendance =  Attendance::
+                    where('users_id', auth()->guard('api')->user()->id)
+                    ->whereDate("clock_in","!=",Carbon::today()->toDateString())
+                    ->whereNull("clock_out")
+                    ->orderBy("clock_in","desc")
+                    ->first();
+
+        if($attendance){
+            throw new ApplicationException("attendance.failure_clockin");
+        }
+
+        if($checkAttendance->count() > 0){
+            throw new ApplicationException("attendance.failure_already_clockin");
+        }else{
+            //Can check in
+            DB::beginTransaction();
+            try {
+
+                $attendance = new Attendance();
+
+                $attendance->users_id = auth()->guard('api')->user()->id;
+                $attendance->clock_in = Carbon::now();
+                $attendance->clock_in_idplaces = $request->idplaces;
+                $attendance->clock_in_latitude =  $request->latitude;
+                $attendance->clock_in_longitude = $request->longitude;
+                $attendance->created_by = $request->user()->id;
+
+                $attendance->save();
+
+                $dataraw = '';
+                $reason  = 'Clock in Attendance #';
+                $trxid   = auth()->guard('api')->user()->id;
+                $model   = 'driver';
+                EventLog::insertLog($trxid, $reason, $dataraw,$model);
+
+                DB::commit();
+                return Response::success($attendance);
+
+            } catch (Exception $e) {
+                DB::rollBack();
+                throw new ApplicationException("attendance.failure_save_attendance");
+            }
+        }
+    }
+
+    public function clock_out_qr(Request $request)
+    {
+        Validate::request($request->all(), [
+            'latitude'  => 'nullable|string',
+            'longitude' => 'nullable|string',
+            'idplaces'  => 'nullable|integer'
+        ]);
+
+        //Validate location
+        $place     = Places::where('idplaces', $request->idplaces)->first();
+
+        if(!$place){
+            //Not a registered place
+            throw new ApplicationException("attendance.failure_clock_out_false_location");
+        }
+
+        $latitude           = $request->latitude;
+        $longitude          = $request->longitude;
+        $place_latitude     = $place->latitude;
+        $place_longitude    = $place->longitude;
+
+        //Check the distance
+        try {
+            $client         = new GuzzleHttp\Client(['http_errors' => false]);
+
+            $url            = "https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=".$latitude.",".$longitude."&destinations=".$place_latitude.",".$place_longitude."&key=".env('GOOGLE_MAP_API_KEY', '');
+            $request_url    = $client->get($url);
+
+            Log::info($url);
+
+            $response_file  = json_decode($request_url->getBody()->getContents(), true);
+        } catch (Exception $e) {
+            throw new ApplicationException("attendance.failure_clockout");
+        }
+
+        if($response_file['status'] == 'OK'){
+            $jarak = 0;
+            if($response_file['rows'][0]['elements'][0]['status'] && $response_file['rows'][0]['elements'][0]['status'] == 'OK'){
+                $jarak      = $response_file['rows'][0]['elements'][0]['distance']['value'];
+            } else {
+                //No Routes Found, Can't be geocoded, Route is too long
+                throw new ApplicationException("attendance.failure_clock_out_too_far");
+            }
+
+            if($jarak > env('RADIUS')){
+                throw new ApplicationException("attendance.failure_clock_out_too_far");
+            }
+        }else{
+            throw new ApplicationException("attendance.failure_clock_out_setting_lock");
+        }
+
+        $attendance     = Attendance::where('users_id', auth()->guard('api')->user()->id)
+                            ->whereNull("clock_out")
+                            ->orderBy("clock_in","desc")
+                            ->first();
+
+        if($attendance){
+
+            try {
+
+                $attendance->update([
+                    'users_id' => auth()->guard('api')->user()->id,
+                    'clock_out' => Carbon::now(),
+                    'clock_out_idplaces' => $request->idplaces,
+                    'clock_out_latitude' => $request->latitude,
+                    'clock_out_longitude' => $request->longitude,
+                    'updated_by'=> $request->user()->id
+                 ]);
+
+                $dataraw = '';
+                $reason  = 'Clock out Attendance #';
+                $trxid   = auth()->guard('api')->user()->id;
+                $model   = 'driver';
+                EventLog::insertLog($trxid, $reason, $dataraw,$model);
+
+                 return Response::success($attendance);
+
+            } catch (Exception $e) {
+                throw new ApplicationException("attendance.failure_save_attendance");
+            }
+
+        }else{
+
+            // check if today already clock in
+            $checkAttendance = Attendance::
+                                where('users_id', auth()->guard('api')->user()->id)
+                                ->where("clock_in",">=",Carbon::today()->toDateString());
+
+            if($checkAttendance->count() < 1){
+                // if clock in not found, user have to clock in first
+                throw new ApplicationException("attendance.failure_not_yet_clock_in");
+            }else{
+                // if already clock in then user already clockout
+                throw new ApplicationException("attendance.failure_already_clockout");
+            }
+        }
+    }
 
     public function clock_in(Request $request)
     {
@@ -292,20 +491,24 @@ class AttendanceController extends Controller
 
         }else{
             if($role_login == Constant::ROLE_VENDOR ) {
-                $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"), 'client_enterprise.name as nama_enterprise')
+                $attendances = Attendance::select('clock_in_places.name as clock_in_location', 'clock_out_places.name as clock_out_location', 'attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"), 'ce.name as nama_enterprise')
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')
                 ->join('driver', 'driver.users_id', '=', 'attendance.users_id')
                 ->join('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
+                ->leftjoin('places as clock_in_places', 'clock_in_places.idplaces', '=', 'attendance.clock_in_idplaces')
+                ->leftjoin('places as clock_out_places', 'clock_out_places.idplaces', '=', 'attendance.clock_out_idplaces')
                 ->where('users.vendor_idvendor', auth()->guard('api')->user()->vendor_idvendor)
                 ->orderBy("attendance.id","desc");
 
             } elseif($role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS || $role_login == Constant::ROLE_ENTERPRISE || $role_login == Constant::ROLE_SUPERADMIN) {
-                $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"),  'client_enterprise.name as nama_enterprise')
+                $attendances = Attendance::select('clock_in_places.name as clock_in_location', 'clock_out_places.name as clock_out_location', 'attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"), 'ce.name as nama_enterprise')
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')
                 ->join('driver', 'driver.users_id', '=', 'attendance.users_id')
-                ->join('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
+                ->join('client_enterprise as ce', 'ce.identerprise', '=', 'users.client_enterprise_identerprise')
+                ->leftjoin('places as clock_in_places', 'clock_in_places.idplaces', '=', 'attendance.clock_in_idplaces')
+                ->leftjoin('places as clock_out_places', 'clock_out_places.idplaces', '=', 'attendance.clock_out_idplaces')
                 ->where('users.client_enterprise_identerprise', auth()->guard('api')->user()->client_enterprise_identerprise)
                 ->orderBy("attendance.id","desc");
             }
