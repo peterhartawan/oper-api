@@ -689,11 +689,20 @@ class DriverController extends Controller
             'identerprise'          => 'integer|required',
             'userdata'              => 'array|nullable',
             'userdata.*.id'         => 'integer|required',
-            'userdata.*.idplaces'   => 'integer|required',
             'unassign_ids'          => 'array|nullable',
             'idrequest'             => 'integer|nullable',
             'time'                  => 'string|nullable'
         ]);
+
+        $idvendor = $request->idvendor;
+
+        if(!empty($idvendor)){
+            if($idvendor != env('OLX_IDVENDOR')){
+                Validate::request($request->all(), [
+                    'userdata.*.idplaces'   => 'integer|required',
+                ]);
+            }
+        }
 
         // Assign new drivers with the location
         DB::beginTransaction();
@@ -795,130 +804,135 @@ class DriverController extends Controller
                 ]);
         }
 
-        //notification by wa to dispatcher
-        //get dispatcher from enterprise id
-        $dispatcher = DB::table('client_enterprise')
-            ->join('users', 'users.client_enterprise_identerprise', '=', 'client_enterprise.identerprise')
-            ->where('client_enterprise.identerprise', $request->identerprise)
-            ->where('users.idrole', Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
-            ->selectRaw('users.phonenumber, users.name')
-            ->first();
-
-        //Get vendor's admin phone number
-        $phoneNumbers = DB::table('client_enterprise')
-            ->where('client_enterprise.identerprise', $request->identerprise)
-            ->join('users', 'client_enterprise.vendor_idvendor' , '=', 'users.vendor_idvendor')
-            ->where('users.idrole', Constant::ROLE_VENDOR)
-            ->selectRaw('users.phonenumber, users.name')
-            ->get();
-
-        //get sorted driver data with location
-        $drivers = DB::table('driver')
-            ->join('users', 'users.id', '=', 'driver.users_id')
-            ->join('places', 'idplaces', '=', 'stay_idplaces')
-            ->whereIn('users.id', $arrayId)
-            ->selectRaw('users.id as iduser, places.idplaces as id, users.name as name, places.name as location, users.phonenumber as phonenumber, driver.stay_time as time')
-            ->orderBy('id', 'ASC')
-            ->get();
-
-        // dd($drivers);
-
-        if(!empty($time))
-            $date = $time;
-        else
-            $date = Carbon::tomorrow()->format('d-m-Y');
-
-        $listDriverString = "";
-        $listLocation = [];
-        $iter = 0;
-
-        foreach($drivers as $index => $driver){
-            if(array_search($driver->id, $listLocation, true) === false){
-                $driverCount = $drivers->where('location', $driver->location)->count();
-                $iter = 1;
-                array_push($listLocation, $driver->id);
-                $listDriverString = $listDriverString . ("\n{$driver->location}, {$driverCount} driver:\n");
-            }
-            $listDriverString = $listDriverString . ("{$iter}.{$driver->name} {$driver->phonenumber}\n");
-            $iter++;
-        }
-
-        $messaging = new MessageHelper();
-
-        try{
-            //vendor notification
-            foreach ($phoneNumbers as $key => $value) {
-                $messaging->sendMessage(
-                    MessageHelper::WHATSAPP,
-                    $value->phonenumber,
-                    (
-                        "Halo, {$value->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
-                        . $listDriverString
-                    )
-                );
-            }
-            //dispatcher notification
-            $messaging->sendMessage(
-                MessageHelper::WHATSAPP,
-                $dispatcher->phonenumber,
-                (
-                    "Halo, {$dispatcher->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
-                    . $listDriverString
-                )
-            );
-        } catch (Exception $e) {
-            throw new ApplicationException("notifications.failure");
-        }
-
-        foreach ($drivers as $index => $driver){
-
-            if($user = User::
-                where("id",$driver->iduser)
-                ->first()){
-                // send email to driver when assign to client enterprise
-                $detailEnterprise = User::where('idrole', Constant::ROLE_ENTERPRISE)
-                        ->with(["enterprise","role"])
-                        ->where('client_enterprise_identerprise', $request->identerprise)
-                        ->first();
-
-                $enterprise =
-                [
-                    'greeting' => 'Assign Driver To Client Enterprise',
-                    'line' => [
-                        'Name Client'   => $detailEnterprise->name,
-                        'Description'   => $detailEnterprise->enterprise->description,
-                        'email'         => $detailEnterprise->email,
-                        'office phone'  => $detailEnterprise->enterprise->office_phone,
-                        'office address' => $detailEnterprise->enterprise->office_address,
-                        'pic name'      => $detailEnterprise->enterprise->pic_name,
-                        'pic phone'     => $detailEnterprise->enterprise->pic_phone,
-                        'site url'      => $detailEnterprise->enterprise->site_url ,
-                    ],
-                ];
-
-                $user->notify(
-                    new AssignDriversToClient($enterprise)
-                );
-
-                //Mobile app notification
-                $tokenMobile = MobileNotification::where("user_id", $driver->iduser)
+        if(!empty($idvendor)){
+            if($idvendor != env('OLX_IDVENDOR')){
+                //notification by wa to dispatcher
+                //get dispatcher from enterprise id
+                $dispatcher = DB::table('client_enterprise')
+                    ->join('users', 'users.client_enterprise_identerprise', '=', 'client_enterprise.identerprise')
+                    ->where('client_enterprise.identerprise', $request->identerprise)
+                    ->where('users.idrole', Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
+                    ->selectRaw('users.phonenumber, users.name')
                     ->first();
 
-                $fcmRegIds = array();
+                //Get vendor's admin phone number
+                $phoneNumbers = DB::table('client_enterprise')
+                    ->where('client_enterprise.identerprise', $request->identerprise)
+                    ->join('users', 'client_enterprise.vendor_idvendor' , '=', 'users.vendor_idvendor')
+                    ->where('users.idrole', Constant::ROLE_VENDOR)
+                    ->selectRaw('users.phonenumber, users.name')
+                    ->get();
 
-                if (!empty($tokenMobile))
-                    array_push($fcmRegIds, $tokenMobile->token);
+                //get sorted driver data with location
+                $drivers = DB::table('driver')
+                    ->join('users', 'users.id', '=', 'driver.users_id')
+                    ->join('places', 'idplaces', '=', 'stay_idplaces')
+                    ->whereIn('users.id', $arrayId)
+                    ->selectRaw('users.id as iduser, places.idplaces as id, users.name as name, places.name as location, users.phonenumber as phonenumber, driver.stay_time as time')
+                    ->orderBy('id', 'ASC')
+                    ->get();
 
-                if ($fcmRegIds) {
-                    $title           = "Update Waktu dan Lokasi Stay";
-                    $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu: {$driver->time}";
-                    $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
-                    $returnsendorder = Notification::sendNotification($getGenNotif);
-                    if ($returnsendorder == false) {
-                        Log::critical("failed send Notification  : {$driver->iduser} ");
+                // dd($drivers);
+
+                if(!empty($time))
+                    $date = $time;
+                else
+                    $date = Carbon::tomorrow()->format('d-m-Y');
+
+                $listDriverString = "";
+                $listLocation = [];
+                $iter = 0;
+
+                foreach($drivers as $index => $driver){
+                    if(array_search($driver->id, $listLocation, true) === false){
+                        $driverCount = $drivers->where('location', $driver->location)->count();
+                        $iter = 1;
+                        array_push($listLocation, $driver->id);
+                        $listDriverString = $listDriverString . ("\n{$driver->location}, {$driverCount} driver:\n\n");
                     }
-                } else {
-                    Log::critical("failed send Notification  : {$driver->iduser} ");
+                    $phone_number = "62" . substr($driver->phonenumber, 1);
+                    $listDriverString = $listDriverString . ("{$iter}.{$driver->name}\nWA: https://wa.me/{$phone_number}\n\n");
+                    $iter++;
+                }
+
+                $messaging = new MessageHelper();
+
+                try{
+                    //vendor notification
+                    foreach ($phoneNumbers as $key => $value) {
+                        $messaging->sendMessage(
+                            MessageHelper::WHATSAPP,
+                            $value->phonenumber,
+                            (
+                                "Halo, {$value->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
+                                . $listDriverString
+                            )
+                        );
+                    }
+                    //dispatcher notification
+                    $messaging->sendMessage(
+                        MessageHelper::WHATSAPP,
+                        $dispatcher->phonenumber,
+                        (
+                            "Halo, {$dispatcher->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
+                            . $listDriverString
+                        )
+                    );
+                } catch (Exception $e) {
+                    throw new ApplicationException("notifications.failure");
+                }
+
+                foreach ($drivers as $index => $driver){
+
+                    if($user = User::
+                        where("id",$driver->iduser)
+                        ->first()){
+                        // send email to driver when assign to client enterprise
+                        $detailEnterprise = User::where('idrole', Constant::ROLE_ENTERPRISE)
+                                ->with(["enterprise","role"])
+                                ->where('client_enterprise_identerprise', $request->identerprise)
+                                ->first();
+
+                        $enterprise =
+                        [
+                            'greeting' => 'Assign Driver To Client Enterprise',
+                            'line' => [
+                                'Name Client'   => $detailEnterprise->name,
+                                'Description'   => $detailEnterprise->enterprise->description,
+                                'email'         => $detailEnterprise->email,
+                                'office phone'  => $detailEnterprise->enterprise->office_phone,
+                                'office address' => $detailEnterprise->enterprise->office_address,
+                                'pic name'      => $detailEnterprise->enterprise->pic_name,
+                                'pic phone'     => $detailEnterprise->enterprise->pic_phone,
+                                'site url'      => $detailEnterprise->enterprise->site_url ,
+                            ],
+                        ];
+
+                        $user->notify(
+                            new AssignDriversToClient($enterprise)
+                        );
+
+                        //Mobile app notification
+                        $tokenMobile = MobileNotification::where("user_id", $driver->iduser)
+                            ->first();
+
+                        $fcmRegIds = array();
+
+                        if (!empty($tokenMobile))
+                            array_push($fcmRegIds, $tokenMobile->token);
+
+                        if ($fcmRegIds) {
+                            $title           = "Update Waktu dan Lokasi Stay";
+                            $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu: {$driver->time}";
+                            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
+                            $returnsendorder = Notification::sendNotification($getGenNotif);
+                            if ($returnsendorder == false) {
+                                Log::critical("failed send Notification  : {$driver->iduser} ");
+                            }
+                        } else {
+                            Log::critical("failed send Notification  : {$driver->iduser} ");
+                        }
+                    }
                 }
             }
         }
