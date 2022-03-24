@@ -95,10 +95,9 @@ class DriverRequestController extends Controller
         if (!empty($purpose_time)) {
             $data = $data->where('purpose_time', 'like', '%' . $purpose_time . '%');
         }
-        // if (!empty($status)) {
-        //     $data = $data->where('status', '=', $status);
-        // }
-        $data = $data->where('status', 1);
+        if (!empty($status)) {
+            $data = $data->where('status', '=', $status);
+        }
 
         $data = $data->with('enterprise', 'place')->paginate($limit);
 
