@@ -546,7 +546,8 @@ class OrderController extends Controller
         if ($fcmRegIds) {
             $title           = "Cancel Order #{$data_order->trx_id}";
             $messagebody     = "Your order #{$data_order->trx_id} has been cancelled";
-            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
+            $clickAction     = "orderCancel";
+            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody, $clickAction);
             $returnsendorder = Notification::sendNotification($getGenNotif);
             if ($returnsendorder == false) {
                 Log::critical("failed send Notification  : {$data_order->driver_userid} ");
@@ -709,7 +710,8 @@ class OrderController extends Controller
             if ($fcmRegIds) {
                 $title           = "New Order #{$data_order->trx_id}";
                 $messagebody     = "You have an order";
-                $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
+                $clickAction	 = "orderUpdate";
+                $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody, $clickAction);
                 $returnsendorder = Notification::sendNotification($getGenNotif);
                 if ($returnsendorder == false) {
                     Log::critical("failed send Notification  : {$request->driver_userid} ");
