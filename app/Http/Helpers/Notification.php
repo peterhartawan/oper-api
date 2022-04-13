@@ -2,9 +2,9 @@
 
 namespace App\Http\Helpers;
 
-class Notification 
+class Notification
 {
-    public static function generateNotification($fcmToken,$title,$messagebody)
+    public static function generateNotification($fcmToken,$title,$messagebody,$type)
     {
         $message = array(
             "registration_ids"=>$fcmToken,
@@ -12,6 +12,11 @@ class Notification
                 "title"=>$title,
                 "body"=>$messagebody,
                 "priority"=>"high"
+            ),
+            "data"=>array(
+                "notification_type" => $type,
+                "title"=>$title,
+                "body"=>$messagebody
             ),
             "priority"=>10
         );
@@ -48,7 +53,7 @@ class Notification
             return false;
         } else {
             return $response;
-        }   
+        }
 
     }
 

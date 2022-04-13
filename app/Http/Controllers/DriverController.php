@@ -119,11 +119,11 @@ class DriverController extends Controller
 
         //Filter by enterprise
         if(!empty($identerprise) && in_array($role_login, [Constant::ROLE_SUPERADMIN,Constant::ROLE_VENDOR,Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS])){
-            $Drivers = $Drivers->where('users.client_enterprise_identerprise',$identerprise);
+            $Drivers = $Drivers->where('users.client_enterprise_identerprise',$identerprise)->orderBy('name','ASC');
         }
 
         if (in_array($role_login, [Constant::ROLE_ENTERPRISE, Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS])) {
-            $Drivers    = $Drivers->where("users.client_enterprise_identerprise",$idclient_login);
+            $Drivers    = $Drivers->where("users.client_enterprise_identerprise",$idclient_login)->orderBy('name', 'ASC');
         }
 
         if ($role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER) {
@@ -729,10 +729,8 @@ class DriverController extends Controller
                 // if current driver status is PKWT Backup update it to PKWT
                 if($driver = Driver::with("user")->where('users_id', $newDriver["id"])
                     ->first()){
-                    if ($driver->drivertype_iddrivertype == constant::DRIVER_TYPE_PKWT_BACKUP){
-                        $driver->updated_by = auth()->guard('api')->user()->id;
-                        $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT;
-                    }
+                    $driver->updated_by = auth()->guard('api')->user()->id;
+                    $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT;
                     //update location
                     $driver->stay_idplaces = $newDriver["idplaces"];
                     //update driver time
@@ -796,12 +794,17 @@ class DriverController extends Controller
 
 
         $idrequest = $request->idrequest;
+        $reqAmt = null;
         //change request status
         if(!empty($idrequest)){
             DriverRequest::where('id', $idrequest)
                 ->update([
                     'status' => 2
                 ]);
+            //get request amount and notes
+            $driverReq = DriverRequest::where('id', $idrequest)->first();
+            $reqAmt = $driverReq->number_of_drivers;
+            $notes = $driverReq->note;
         }
 
         if(!empty($idvendor)){
@@ -832,23 +835,22 @@ class DriverController extends Controller
                     ->orderBy('id', 'ASC')
                     ->get();
 
-                // dd($drivers);
-
                 if(!empty($time))
-                    $date = $time;
+                    $date = Carbon::parse($time)->format('d-m-Y, H:i:s');
                 else
                     $date = Carbon::tomorrow()->format('d-m-Y');
 
                 $listDriverString = "";
                 $listLocation = [];
                 $iter = 0;
+                $driverAmt = $drivers->count();
 
                 foreach($drivers as $index => $driver){
                     if(array_search($driver->id, $listLocation, true) === false){
                         $driverCount = $drivers->where('location', $driver->location)->count();
                         $iter = 1;
                         array_push($listLocation, $driver->id);
-                        $listDriverString = $listDriverString . ("\n{$driver->location}, {$driverCount} driver:\n\n");
+                        $listDriverString = $listDriverString . ("Lokasi: {$driver->location}\n\n");
                     }
                     $phone_number = "62" . substr($driver->phonenumber, 1);
                     $listDriverString = $listDriverString . ("{$iter}.{$driver->name}\nWA: https://wa.me/{$phone_number}\n\n");
@@ -858,36 +860,51 @@ class DriverController extends Controller
                 $messaging = new MessageHelper();
 
                 try{
-                    //vendor notification
-                    foreach ($phoneNumbers as $key => $value) {
+                    //request amount must not be null
+                    if($reqAmt != null){
+                        //vendor notification
+                        foreach ($phoneNumbers as $key => $value) {
+                            $messaging->sendMessage(
+                                MessageHelper::WHATSAPP,
+                                $value->phonenumber,
+                                (
+                                    "Halo, {$value->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n".
+                                    "Jumlah Request Driver: " . $reqAmt . "\n" .
+                                    "Keterangan: " . $notes . "\n" .
+                                    "Jumlah Penempatan Driver: " . $driverAmt . "\n" .
+                                    $listDriverString .
+                                    "Terima Kasih~"
+                                )
+                            );
+                        }
+                        //dispatcher notification
                         $messaging->sendMessage(
                             MessageHelper::WHATSAPP,
-                            $value->phonenumber,
+                            $dispatcher->phonenumber,
                             (
-                                "Halo, {$value->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
-                                . $listDriverString
+                                "Halo, {$dispatcher->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n".
+                                "Jumlah Request Driver: " . $reqAmt . "\n" .
+                                "Keterangan: " . $notes . "\n" .
+                                "Jumlah Penempatan Driver: " . $driverAmt . "\n" .
+                                $listDriverString .
+                                "Terima Kasih~"
                             )
                         );
                     }
-                    //dispatcher notification
-                    $messaging->sendMessage(
-                        MessageHelper::WHATSAPP,
-                        $dispatcher->phonenumber,
-                        (
-                            "Halo, {$dispatcher->name}. Berikut rincian penempatan driver untuk tanggal {$date}\n\n"
-                            . $listDriverString
-                        )
-                    );
                 } catch (Exception $e) {
                     throw new ApplicationException("notifications.failure");
                 }
 
+
                 foreach ($drivers as $index => $driver){
+
 
                     if($user = User::
                         where("id",$driver->iduser)
                         ->first()){
                         // send email to driver when assign to client enterprise
+
+                        /* Untuk sekarang notif by email ditutup dulu
                         $detailEnterprise = User::where('idrole', Constant::ROLE_ENTERPRISE)
                                 ->with(["enterprise","role"])
                                 ->where('client_enterprise_identerprise', $request->identerprise)
@@ -911,6 +928,7 @@ class DriverController extends Controller
                         $user->notify(
                             new AssignDriversToClient($enterprise)
                         );
+                        */
 
                         //Mobile app notification
                         $tokenMobile = MobileNotification::where("user_id", $driver->iduser)

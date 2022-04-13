@@ -58,7 +58,7 @@ class DriverRequestController extends Controller
         $purpose_time = $request->query('purpose_time');
         $status = $request->query('status');
         $order_by = $request->has('order_by') ? $request->query('order_by') : 'id';
-        $order_type = $request->has('order_type') ? $request->query('order_type') : 'asc';
+        $order_type = $request->has('order_type') ? $request->query('order_type') : 'desc';
         $limit = $request->has('size') ? (int)$request->query('size') : Constant::LIMIT_PAGINATION;
 
         $data = DriverRequest::select(
