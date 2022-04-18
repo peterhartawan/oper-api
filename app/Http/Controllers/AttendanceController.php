@@ -255,7 +255,7 @@ class AttendanceController extends Controller
         }
 
         //Web Vendor
-        if ($role_login == Constant::ROLE_VENDOR || $role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER || $role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS) {
+        if ($role_login == Constant::ROLE_VENDOR || $role_login == Constant::ROLE_VENDOR_SUB || $role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER || $role_login == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS) {
             if ($type == 'driver') {
                 return $this->reportingDriver($request);
             } else {
@@ -291,7 +291,7 @@ class AttendanceController extends Controller
                         ->orderBy("attendance.id","desc");
 
         }else{
-            if($role_login == Constant::ROLE_VENDOR ) {
+            if($role_login == Constant::ROLE_VENDOR || $role_login == Constant::ROLE_VENDOR_SUB) {
                 $attendances = Attendance::select('attendance.id','attendance.clock_in_latitude','attendance.clock_in_longitude','attendance.clock_out_latitude','attendance.clock_out_longitude','attendance.image_url','users.profile_picture','attendance.remark','users.name as name',DB::raw("DATE_FORMAT(attendance.clock_out, '%a, %d %M %Y %H:%i:%s') as clock_out"),DB::raw("DATE_FORMAT(attendance.clock_in, '%a, %d %M %Y %H:%i:%s') as clock_in"), 'client_enterprise.name as nama_enterprise')
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')

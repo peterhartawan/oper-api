@@ -68,6 +68,14 @@ class RoleAccess
         "DriverRequestController" => "all"
     ];
 
+    const VENDOR_SUB = [
+        "AuthController" => "all",
+        "DriverController" => ["index"],
+        "UserController" => ["index", "change_password", "update", "me"],
+        "RoleController" => ["access"],
+        "AttendanceController" => ["show", "reporting"],
+    ];
+
     const ENTERPRISE = [
         "AuthController" => "all",
         "UserController" => ["index", "change_password", "update", "me"],
