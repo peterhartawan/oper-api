@@ -75,7 +75,7 @@ class DriverController extends Controller
         }
 
         //Filter by vendor
-        if($role_login == Constant::ROLE_VENDOR){
+        if($role_login == Constant::ROLE_VENDOR || $role_login == Constant::ROLE_VENDOR_SUB){
             $Drivers     = $Drivers->where("users.vendor_idvendor",$idvendor_login)
                 ->leftjoin('client_enterprise', 'users.client_enterprise_identerprise' , '=', 'client_enterprise.identerprise')
                 ->leftjoin('places', 'places.idplaces','=', 'driver.stay_idplaces');

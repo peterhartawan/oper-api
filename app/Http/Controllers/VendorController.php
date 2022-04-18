@@ -89,7 +89,8 @@ class VendorController extends Controller
     public function admin(Request $request)
     {
         Validate::request($request->all(), [
-            'idvendor'=> 'required|integer|exists:vendor' ,
+            'idvendor'=> 'required|integer|exists:vendor',
+            'idrole' => 'required|integer|exists:role',
             'admin_name' => 'required|string|max:45',
             'admin_email' => 'required|max:100|email|unique:users,email',
             'admin_mobile_number' => 'required|string|unique:users,phonenumber|max:45|min:10',
@@ -102,7 +103,7 @@ class VendorController extends Controller
                 'email' => $request->admin_email,
                 'password' => bcrypt(str_random(12)),
                 'phonenumber' => $request->admin_mobile_number,
-                'idrole' => Constant::ROLE_VENDOR,
+                'idrole' => $request->idrole,
                 'vendor_idvendor' => $request->idvendor,
                 'status'    => Constant::STATUS_INACTIVE
             ]);
