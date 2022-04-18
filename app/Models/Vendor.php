@@ -68,7 +68,7 @@ class Vendor extends Model
 
 	public function admins()
 	{
-		return $this->hasMany(\App\User::class, 'vendor_idvendor')->where('idrole', 2);
+		return $this->hasMany(\App\User::class, 'vendor_idvendor')->where('idrole', 2)->orwhere('idrole', 9);
 	}
 
     public function enterprises()

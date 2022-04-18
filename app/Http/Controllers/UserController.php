@@ -252,6 +252,7 @@ class UserController extends Controller
             'name'        => 'required|string',
             'phonenumber' => 'required|string|unique:users,phonenumber,'.$id,
             'email'       => 'required|max:100|email|unique:users,email,'.$id,
+            'idrole'      => 'nullable|int'
         ]);
 
         $users            = User::findOrFail($id);
@@ -283,6 +284,9 @@ class UserController extends Controller
 
             if($role_login == Constant::ROLE_SUPERADMIN){
                     $status   = Constant::OPTION_ENABLE;
+                    if(!empty($request->idrole)){
+                        $users->idrole = $request->idrole;
+                    }
             }elseif($role_login == Constant::ROLE_VENDOR){
                 if($role_update == Constant::ROLE_DRIVER){
                     $status   = Constant::OPTION_ENABLE;

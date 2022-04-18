@@ -49,6 +49,9 @@ class Authenticate
             case Constant::ROLE_VENDOR:
                 $this->access_permission(RoleAccess::VENDOR);
                 break;
+            case Constant::ROLE_VENDOR_SUB:
+                $this->access_permission(RoleAccess::VENDOR_SUB);
+                break;
             case Constant::ROLE_ENTERPRISE:
                 $this->access_permission(RoleAccess::ENTERPRISE);
                 break;

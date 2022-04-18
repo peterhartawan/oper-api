@@ -48,7 +48,7 @@ class AccessTokenController extends ATC
             throw new ApplicationException('errors.failure_require_field', ['field' => 'username']);
         if (!isset($parsedBody['password']))
             throw new ApplicationException('errors.failure_require_field', ['field' => 'password']);
-        
+
         #check user
         $username = trim($parsedBody['username']);
         $user = User::where('email', '=', $username)->first();
@@ -57,7 +57,7 @@ class AccessTokenController extends ATC
 
         #check user environment
         $this->validateUserEnvironment($parsedBody, $user);
-        
+
         # check user status
         $this->validateUserStatus($user);
 
@@ -87,7 +87,7 @@ class AccessTokenController extends ATC
             $vendor = Vendor::where('idvendor', '=', $user->vendor_idvendor)
                         ->where('status','=',Constant::STATUS_ACTIVE)
                         ->first();
-            
+
             if (empty($vendor))
                 throw new ApplicationException('vendors.failed_to_login_suspend_2');
 
@@ -114,10 +114,10 @@ class AccessTokenController extends ATC
                 if (empty($vendor))
                     throw new ApplicationException('vendors.failed_to_login_suspend');
 
-                if (!in_array($user->idrole, [Constant::ROLE_VENDOR, Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER, Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS, Constant::ROLE_DISPATCHER_ONDEMAND, Constant::ROLE_EMPLOYEE]))
+                if (!in_array($user->idrole, [Constant::ROLE_VENDOR, Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER, Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS, Constant::ROLE_DISPATCHER_ONDEMAND, Constant::ROLE_EMPLOYEE, Constant::ROLE_VENDOR_SUB]))
                     throw new ApplicationException('errors.unauthorized');
 
-                //jika rolenya dispatcher enterprise plus maka client enterprise harus aktif 
+                //jika rolenya dispatcher enterprise plus maka client enterprise harus aktif
                 if ($user->idrole == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
                     //cek status client enterprise plus aktif tidak
                     $client       = ClientEnterprise::where('identerprise', $user->client_enterprise_identerprise)
@@ -125,7 +125,7 @@ class AccessTokenController extends ATC
                                     ->first();
                     if (!empty($client))
                         throw new ApplicationException('errors.failed_to_login_suspend');
-        
+
             }
             #client enterprise
             else {
@@ -147,7 +147,7 @@ class AccessTokenController extends ATC
                     throw new ApplicationException('errors.failed_to_login_suspend');
 
             }
-            
+
         }
     }
 

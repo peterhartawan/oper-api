@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Constants;
 
 class Constant
@@ -8,7 +8,7 @@ class Constant
 
     #DATE FORMAT
     const DATE_FORMAT = "Y-m-d H:i:s";
-    
+
     #BOOLEAN
     const BOOLEAN_TRUE  = 1;
     const BOOLEAN_FALSE = 0;
@@ -28,11 +28,11 @@ class Constant
     const GENDER_FEMALE = 2;
 
     #TIME
-    const TIME_ONE_SECOND = 1; 
-    const TIME_THREE_SECONDS = 3; 
-    const TIME_ONE_HOUR = 3600; 
-    const TIME_SIX_HOURS = 21600; 
-    const TIME_ONE_DAY = 86400; 
+    const TIME_ONE_SECOND = 1;
+    const TIME_THREE_SECONDS = 3;
+    const TIME_ONE_HOUR = 3600;
+    const TIME_SIX_HOURS = 21600;
+    const TIME_ONE_DAY = 86400;
     const TIME_ONE_WEEK = 604800;
     const TIME_TWO_WEEKS = 1209600;
 
@@ -55,6 +55,7 @@ class Constant
     # USER TYPE
     const ROLE_SUPERADMIN = 1;
     const ROLE_VENDOR = 2;
+    const ROLE_VENDOR_SUB = 9;
     const ROLE_ENTERPRISE= 3;
     const ROLE_DISPATCHER_ENTERPRISE_REGULER = 4;
     const ROLE_DISPATCHER_ENTERPRISE_PLUS = 5;
@@ -106,12 +107,12 @@ class Constant
     # LIMIT PAGINATION
     const LIMIT_PAGINATION = 10;
 
-    #DELAY 
+    #DELAY
     const DELAY_TASK = 5;
     const DELAY_ATTENDANCE = 30;
-    
+
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');
         return $oClass->getConstants();
     }
-} 
+}
