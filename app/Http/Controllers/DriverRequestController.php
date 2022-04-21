@@ -9,11 +9,12 @@ use App\Services\Response;
 use App\Constants\Constant;
 use App\Exceptions\ApplicationException;
 use App\Helper\MessageHelper;
+use App\Http\Helpers\Paginator;
 use DB;
 
 class DriverRequestController extends Controller
 {
-    const ORDER_BY_FIELD = ['enterprise_id', 'place_id', 'number_of_drivers', 'status', 'purpose_time'];
+    const ORDER_BY_FIELD = ['enterprise_id', 'place_id', 'number_of_drivers', 'status', 'purpose_time', 'updated_at', 'id'];
 
     const STATUS_CANCELED = 'CANCELED';
     const STATUS_REQUESTED = 'REQUESTED';
@@ -97,11 +98,20 @@ class DriverRequestController extends Controller
         }
         if (!empty($status)) {
             $data = $data->where('status', '=', $status);
+            if($status == 2){
+                $data = $data->orderBy('updated_at', 'desc');
+            }
         }
 
-        $data = $data->with('enterprise', 'place')->paginate($limit);
+        $data = $data->with('enterprise', 'place')->get();//->paginate($limit);
 
-        return Response::success($data);
+        $page = $request->page ? $request->page : 1 ;
+        $perPage = $request->query('limit')?? Constant::LIMIT_PAGINATION;
+        $requests_new = new Paginator($data->forPage($page, $perPage), $data->count(), $perPage, $page);
+        $requests_new = $requests_new->setPath(url()->full());
+
+        // return Response::success($data);
+        return Response::success($requests_new);
     }
 
     /**

@@ -145,12 +145,15 @@ class UserController extends Controller
         }
         elseif (in_array($role_login, $driverRole)) {
             //query driveer
+	        DB::statement("SET lc_time_names = id_ID");
             $detail_user = User::select(DB::raw("CONCAT('Member Since,',' ',DATE_FORMAT(users.created_at, '%d %M %Y')) as join_date"),"users.*")
                     ->where('id', $userid)
                     ->with(["role","vendor","enterprise",
                         "driver_profile" => function($query) {
                             $query->selectRaw(
-                                    "driver.*, CONCAT('Jam: ', DATE_FORMAT(stay_time, '%H.%i'), ' WIB') as stay_time"
+                                    "driver.*, " .
+				    "CONCAT('Jam: ', DATE_FORMAT(stay_time, '%H.%i'), ' WIB') as stay_time, " .
+				    "CONCAT('Hari/Tanggal: ', DATE_FORMAT(stay_time, '%W'), ', ', DATE_FORMAT(stay_time, '%d %M %Y')) as stay_date"
                                 )
                                 ->with(["places" => function($query){
                                     $query->selectRaw(
@@ -160,6 +163,7 @@ class UserController extends Controller
                         },
                         "dispatcher_profile"])
                     ->first();
+	        DB::statement("SET lc_time_names = en_US");
 
             $driver = Driver::where("users_id", $userid)
                 ->leftJoin('users','driver.users_id','=','users.id')

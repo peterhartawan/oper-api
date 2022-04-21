@@ -774,6 +774,7 @@ class DriverController extends Controller
                         if ($driver->drivertype_iddrivertype == constant::DRIVER_TYPE_PKWT){
                             $driver->updated_by = auth()->guard('api')->user()->id;
                             $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT_BACKUP;
+                            $driver->stay_time = null;
                             $driver->update();
                         }
                     }else{
@@ -941,8 +942,9 @@ class DriverController extends Controller
 
                         if ($fcmRegIds) {
                             $title           = "Update Waktu dan Lokasi Stay";
-                            $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu: {$driver->time}";
-                            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
+                            $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu {$driver->time}";
+                            $clickAction     = "upLocTimeStay";
+                            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody, $clickAction);
                             $returnsendorder = Notification::sendNotification($getGenNotif);
                             if ($returnsendorder == false) {
                                 Log::critical("failed send Notification  : {$driver->iduser} ");
