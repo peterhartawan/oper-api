@@ -32,6 +32,7 @@ use App\Notifications\AccountActivation;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\OrdersExport;
+use App\Exports\OrdersExportFromView;
 use App\Exports\UserReport;
 use Illuminate\Support\Facades\Redirect;
 use App\Http\Helpers\GlobalHelper;
@@ -893,7 +894,8 @@ class OrderController extends Controller
 
 
         $user               = auth()->guard('api')->user();
-        $identerprise       = auth()->guard('api')->user()->client_enterprise_identerprise;
+        $identerprise       = $user->client_enterprise_identerprise;
+        $idvendor           = $user->vendor_idvendor;
 
         $enterprise_name    = $request->query('enterprise_name');
         $driver_name        = $request->query('driver_name');
@@ -1010,7 +1012,11 @@ class OrderController extends Controller
         if ($export == Constant::BOOLEAN_TRUE) {
             if (!empty($month)) {
                 $file_name = "Order_export" . $order_status . "-" . $month . ".xlsx";
-                Excel::store(new OrdersExport($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
+                if($idvendor == env('OLX_IDVENDOR')){
+                    Excel::store(new OrdersExportFromView($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
+                } else {
+                    Excel::store(new OrdersExport($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
+                }
                 $fileexport = Storage::url('file/' . $file_name);
 
                 return Response::success(["file export" => url($fileexport)]);
