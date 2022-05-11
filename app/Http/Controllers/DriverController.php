@@ -94,6 +94,7 @@ class DriverController extends Controller
                     }])
                     ->orderBy('checked', 'DESC')
                     ->orderBy('isplace', 'DESC')
+                    ->orderBy('idplaces', 'DESC')
                     ->orderBy('name', 'ASC');
             } else {
                 if(!empty($assign_enterprise)){
@@ -186,6 +187,17 @@ class DriverController extends Controller
         $all_driver = collect($Drivers);
         $driver_new = new Paginator($all_driver->forPage($page, $perPage), $all_driver->count(), $perPage, $page);
         $driver_new = $driver_new->setPath(url()->full());
+
+        $use_pagination = $request->query('usepagination');
+        if(!empty($use_pagination)){
+            $driver_new = collect($driver_new);
+            $Drivers = $Drivers->where('checked', 1);
+            if($places != "null"){
+                $Drivers = $Drivers->where('isplace', 1);
+            }
+            $selected_drivers = collect($Drivers);
+            $driver_new->put('selected_drivers', $selected_drivers);
+        }
 
         return Response::success($driver_new);
         // return Response::success($Drivers->paginate($limit ?? Constant::LIMIT_PAGINATION));
@@ -700,6 +712,7 @@ class DriverController extends Controller
             if($idvendor != env('OLX_IDVENDOR')){
                 Validate::request($request->all(), [
                     'userdata.*.idplaces'   => 'integer|required',
+                    'userdata.*.stay_time'  => 'string|required',
                 ]);
             }
         }
@@ -709,7 +722,6 @@ class DriverController extends Controller
 
         $newlyAddedDrivers = [];
         $arrayId = [];
-        $time = $request->time;
         foreach ($request->userdata as $index => $newDriver){
 
             if($user = User::
@@ -732,11 +744,11 @@ class DriverController extends Controller
                     $driver->updated_by = auth()->guard('api')->user()->id;
                     $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT;
                     //update location
-                    $driver->stay_idplaces = $newDriver["idplaces"];
+                    if(!empty($newDriver["idplaces"]))
+                        $driver->stay_idplaces = $newDriver["idplaces"];
                     //update driver time
-                    if(!empty($time)){
-                        $driver->stay_time = $time;
-                    }
+                    if(!empty($newDriver["stay_time"]))
+                        $driver->stay_time = $newDriver["stay_time"];
                     $driver->update();
                     $newlyAddedDrivers[$index] = $driver;
                 }else{
@@ -774,6 +786,7 @@ class DriverController extends Controller
                         if ($driver->drivertype_iddrivertype == constant::DRIVER_TYPE_PKWT){
                             $driver->updated_by = auth()->guard('api')->user()->id;
                             $driver->drivertype_iddrivertype = constant::DRIVER_TYPE_PKWT_BACKUP;
+                            $driver->stay_time = null;
                             $driver->update();
                         }
                     }else{
@@ -941,8 +954,9 @@ class DriverController extends Controller
 
                         if ($fcmRegIds) {
                             $title           = "Update Waktu dan Lokasi Stay";
-                            $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu: {$driver->time}";
-                            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody);
+                            $messagebody     = "Lokasi Stay: {$driver->location}, Tanggal/Waktu {$driver->time}";
+                            $clickAction     = "upLocTimeStay";
+                            $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody, $clickAction);
                             $returnsendorder = Notification::sendNotification($getGenNotif);
                             if ($returnsendorder == false) {
                                 Log::critical("failed send Notification  : {$driver->iduser} ");
