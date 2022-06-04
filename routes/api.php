@@ -95,7 +95,9 @@ Route::group([
         'prefix' => 'dispatcher'
       ], function() {
         Route::get('/available', 'DispatcherController@available');
+        Route::get('/mdavailable', 'DispatcherController@mdavailable');
         Route::put('/assign-to-enterprise', 'DispatcherController@assign_to_enterprise');
+        Route::put('/multi-to-enterprise', 'DispatcherController@multi_to_enterprise');
         Route::post('resend-activation', 'DispatcherController@resendactivation');
         Route::get('/total-account', 'DispatcherController@totalAccount');
 
