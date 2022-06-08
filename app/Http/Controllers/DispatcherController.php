@@ -50,7 +50,7 @@ class DispatcherController extends Controller
             Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS,
             Constant::ROLE_DISPATCHER_ONDEMAND
         ];
-        
+
         if(empty(auth()->guard('api')->user()->vendor_idvendor)){
             throw new ApplicationException("errors.access_denied");
         }
@@ -58,10 +58,10 @@ class DispatcherController extends Controller
         if ($request->query('role')) {
 
             try {
-                
+
                 $dispatcher = User::whereIn('idrole', $dispatcherRole)
                                 ->where('vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor);
-                
+
             } catch (Exception $e) {
                 throw new ApplicationException("dispatcher.failure_get_dispatcher");
             }
@@ -74,25 +74,25 @@ class DispatcherController extends Controller
             } catch (Exception $e) {
                 throw new ApplicationException("dispatcher.failure_get_dispatcher");
             }
-            
-        } 
-        
+
+        }
+
         if ($is_dropdown == Constant::OPTION_ENABLE) {
             $dispatcher = $dispatcher->select('users.id','users.name');
 
             if(!empty($keyword_search))
                 $dispatcher = $dispatcher->where("users.name","like","%".$keyword_search."%");
-            
+
         }else{
             $dispatcher = $dispatcher->with(["vendor","enterprise","role","dispatcher_profile"]);
-            
+
             if(!empty($keyword_search)){
                 $dispatcher        = $dispatcher->where(function($query) use ($keyword_search) {
                                     $query->where('users.name','like','%' . $keyword_search . '%');
                 });
-            }  
+            }
         }
-        
+
         if(!empty($status)){
             $dispatcher = $dispatcher->where("users.status",$status);
         }else{
@@ -123,14 +123,14 @@ class DispatcherController extends Controller
         $all_dispatcher = collect($dispatcher);
         $dispatcher_new = new Paginator($all_dispatcher->forPage($page, $perPage), $all_dispatcher->count(), $perPage, $page, [
             'path' => url("attendance/reporting?type=driver")
-        ]); 
+        ]);
         return Response::success($dispatcher_new);
         // return Response::success($dispatcher->paginate($request->query('limit')  ?? Constant::LIMIT_PAGINATION));
     }
     /**
      * Display the specified resource.
      *
-     * @param  \App\Dispatcher 
+     * @param  \App\Dispatcher
      * @return \Illuminate\Http\Response
      */
     public function show(Request $request, $id)
@@ -155,7 +155,7 @@ class DispatcherController extends Controller
                                 ->where('id', $id)
                                 ->where('vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor)
                                 ->first();
-                
+
             } catch (Exception $e) {
                 throw new ApplicationException("dispatcher.failure_get_dispatcher");
             }
@@ -164,13 +164,13 @@ class DispatcherController extends Controller
             $roles = explode(',',$request->query('role') );
 
             foreach ($roles as $index => $role) {
-                if (!in_array($role, $dispatcherRole )) {                    
+                if (!in_array($role, $dispatcherRole )) {
                     throw new ApplicationException("dispatcher.failure_get_dispatcher_by_role");
                 }
             }
-            
+
             try {
-                
+
                 $dispatcher = User::with(["vendor","enterprise","role","dispatcher_profile"])
                                 ->whereIn('idrole', $roles)
                                 ->whereIn('status', [Constant::STATUS_ACTIVE, Constant::STATUS_SUSPENDED])
@@ -181,8 +181,8 @@ class DispatcherController extends Controller
             } catch (Exception $e) {
                 throw new ApplicationException("dispatcher.failure_get_dispatcher");
             }
-            
-        } 
+
+        }
 
         // change image url to laravel path
         if(!empty($dispatcher->profile_picture)){
@@ -197,14 +197,14 @@ class DispatcherController extends Controller
     /**
      * get list of dispatcher by vendor and identerprise
      * get dispatcher regular
-     * 
-     * 
+     *
+     *
      * @return [json] driver type
     */
     public function available(Request $request)
-    {     
+    {
         $keyword_search     = $request->query('q');
-        if(auth()->guard('api')->user()->vendor_idvendor == null) 
+        if(auth()->guard('api')->user()->vendor_idvendor == null)
             throw new ApplicationException('errors.access_denied');
 
         $dispatchers = User::where('users.status', Constant::STATUS_ACTIVE)
@@ -218,7 +218,48 @@ class DispatcherController extends Controller
                                 $query->orwhere('users.email', 'like', '%' . $keyword_search . '%');
                             });
         }
-        
+
+        $dispatchers = $dispatchers->get();
+
+        return Response::success($dispatchers);
+    }
+
+    /**
+     * get list of dispatcher by vendor and identerprise
+     * get dispatcher regular
+     * for multiple dispatchers
+     *
+     * @return [json] driver type
+    */
+    public function mdavailable(Request $request)
+    {
+        $keyword_search     = $request->query('q');
+        if(auth()->guard('api')->user()->vendor_idvendor == null)
+            throw new ApplicationException('errors.access_denied');
+
+        $dispatchers = User::where('users.status', Constant::STATUS_ACTIVE)
+            ->where('vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor)
+            ->join('dispatcher','dispatcher.users_id','=','users.id')
+            ->orderBy('idrole', 'desc');
+
+        if(!empty($keyword_search)){
+            $dispatchers = $dispatchers->where(function($query) use ($keyword_search) {
+                                $query->where('users.name', 'like', '%' . $keyword_search . '%');
+                                $query->orwhere('users.email', 'like', '%' . $keyword_search . '%');
+                            });
+        }
+
+        if(!empty($request->query('assignenterprise'))){
+            $assign_enterprise = $request->query('assignenterprise');
+            $dispatchers = $dispatchers->selectRaw(
+                "
+                *,
+                IF(`users`.`client_enterprise_identerprise` = " . $assign_enterprise . ", true, false) as `checked`
+                "
+            )
+            ->orderBy('checked', 'desc');
+        }
+
         $dispatchers = $dispatchers->get();
 
         return Response::success($dispatchers);
@@ -239,18 +280,18 @@ class DispatcherController extends Controller
         //check dispatcher is already assigned
         if ($users->idrole == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
             throw new ApplicationException('dispatcher.failure_dispatcher_have_been_assign');
-            
+
         //check is dispatcher regular
         if ($users->idrole != Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER)
             throw new ApplicationException('dispatcher.failure_dispatcher_not_regular');
-           
+
         //get old dispatcher if any
         $old_dispatcher = User::where('idrole',constant::ROLE_DISPATCHER_ENTERPRISE_PLUS)
             ->where('client_enterprise_identerprise', $request->identerprise)
             ->get();
-                      
+
         DB::beginTransaction();
-        
+
         try {
             //ubah status dipatcher plus ke dispatcher biasa
             foreach($old_dispatcher as $dispatcher_detail) {
@@ -261,20 +302,20 @@ class DispatcherController extends Controller
                     ]);
             }
 
-            //update 
+            //update
             $users->client_enterprise_identerprise = $request->identerprise;
             $users->idrole = constant::ROLE_DISPATCHER_ENTERPRISE_PLUS;
             $users->update();
 
             //send email to client
             $qdispatcher = Dispatcher::where('users_id', $request->dispatcher_userid)
-                    ->with(["user"]) 
+                    ->with(["user"])
                     ->first();
 
             if (empty($qdispatcher))
                 throw new ApplicationException('errors.entity_not_found', ['entity' => 'Dispatcher', 'id' => $request->dispatcher_userid]);
 
-            $dispatcherdetail = 
+            $dispatcherdetail =
             [
                 'greeting' => 'You Have New Dispatcher',
                 'line' => [
@@ -286,7 +327,7 @@ class DispatcherController extends Controller
                 ],
             ];
 
-            
+
 
             //send email to dispatcher
             $dispatcherRole = [
@@ -304,14 +345,14 @@ class DispatcherController extends Controller
             $emailsDispatcher = User::wherein('idrole', $dispatcherRole)
                                 ->where('id', $request->dispatcher_userid)
                                 ->first();
-                
-            if($emailsDispatcher){   
+
+            if($emailsDispatcher){
                 $detailEnterprise = User::where('idrole', Constant::ROLE_ENTERPRISE)
                         ->with(["enterprise","role"])
                         ->where('client_enterprise_identerprise', $request->identerprise)
-                        ->first();   
-                
-                $enterprise = 
+                        ->first();
+
+                $enterprise =
                 [
                     'greeting' => 'Assign Dispatcher To Client Enterprise',
                     'line' => [
@@ -327,14 +368,56 @@ class DispatcherController extends Controller
                 ];
 
                 $emailsDispatcher->notify(
-                    new AssignDispatcherToClient($enterprise)); 
-            }  
+                    new AssignDispatcherToClient($enterprise));
+            }
 
 
             return Response::success($users);
         }
         catch (Exception $e) {
-            DB::rollBack();         
+            DB::rollBack();
+            throw new ApplicationException("dispatcher.failure_assign_dispatcher");
+        }
+    }
+
+    public function multi_to_enterprise(Request $request){
+
+        Validate::request($request->all(), [
+            'assign_ids'    => 'array|nullable',
+            'unassign_ids'  => 'array|nullable',
+            'identerprise'  => 'required|integer|exists:client_enterprise' ,
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            //unassign
+            if(!empty($request->unassign_ids)){
+                foreach($request->unassign_ids as $unassign_id){
+                    User::where('id', $unassign_id)
+                        ->update([
+                            'client_enterprise_identerprise' => NULL,
+                            'idrole' => Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER,
+                        ]);
+                }
+            }
+
+            //assign
+            if(!empty($request->assign_ids)){
+                foreach($request->assign_ids as $assign_id){
+                    User::where('id', $assign_id)
+                        ->update([
+                            'client_enterprise_identerprise' => $request->identerprise,
+                            'idrole' => Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS,
+                        ]);
+                }
+            }
+
+            DB::commit();
+            return Response::success("Dispatchers are assigned successfully");
+        }
+        catch (Exception $e) {
+            DB::rollBack();
             throw new ApplicationException("dispatcher.failure_assign_dispatcher");
         }
     }
@@ -367,13 +450,13 @@ class DispatcherController extends Controller
         ]);
 
         DB::beginTransaction();
-        try {  
+        try {
             if($request->hasfile('photo')){
-                $path = Storage::putFile("/public/images/users", $request->file('photo'));             
+                $path = Storage::putFile("/public/images/users", $request->file('photo'));
 
             }else{
                 $path = '';
-            } 
+            }
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -400,9 +483,9 @@ class DispatcherController extends Controller
                 'gender' => $request->gender,
                 'address' => $request->address,
                 'created_by'=> $request->user()->id
-            ]);   
+            ]);
             $dispatcher = $dispatcher->where('users_id', $user->id)
-                ->with(["user"]) 
+                ->with(["user"])
                 ->first();
 
             $dataraw = '';
@@ -411,21 +494,21 @@ class DispatcherController extends Controller
             $model   = 'dispatcher';
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
-            DB::commit();       
-           
+            DB::commit();
+
             $linkurl = env('URL_VENDOR');
 
             if ($user && $passwordReset){
                 $user->notify(
                     new AccountActivation($passwordReset->token,$linkurl)
-                );    
+                );
             }
 
             if(!empty($dispatcher->user->profile_picture)){
-                $dispatcher->user->profile_picture = Storage::url($dispatcher->user->profile_picture);    
+                $dispatcher->user->profile_picture = Storage::url($dispatcher->user->profile_picture);
                 $dispatcher->user->profile_picture = env('BASE_API').$dispatcher->user->profile_picture;
-            }       
-                     
+            }
+
             return Response::success($dispatcher);
         } catch (Exception $e) {
             DB::rollBack();
@@ -450,7 +533,7 @@ class DispatcherController extends Controller
      * @return [string] message
      */
     public function update(Request $request, $id)
-    {    
+    {
         Validate::request($request->all(), [
             'name'=> 'required|min:3|max:45|string' ,
             'phonenumber' => 'required|min:10|max:45|string|unique:users,phonenumber,'.$id,
@@ -470,7 +553,7 @@ class DispatcherController extends Controller
             $Users        = User::where('id',$id)->first();
 
             if(empty($dispatchers)){
-                throw new ApplicationException("errors.entity_not_found", ['entity' => 'Dispatcher','id' => $id]);            
+                throw new ApplicationException("errors.entity_not_found", ['entity' => 'Dispatcher','id' => $id]);
             }
 
             if($new_email != $Users->email && $new_email != ""){
@@ -479,17 +562,17 @@ class DispatcherController extends Controller
 
             if($request->hasfile('photo')){
                 $path = Storage::putFile("/public/images/users", $request->file('photo'));
-                    
+
             }else{
                 $path = '';
-            } 
+            }
             $update = $dispatchers->update([
                         'birthdate'     => $request->birthdate,
                         'nik'           => $request->nik,
                         'gender'        => $request->gender,
                         'address'       => $request->address,
                         'updated_by'    => auth()->guard('api')->user()->id,
-                    ]);   
+                    ]);
 
             $user   = $Users->update([
                         'name'              => $request->name,
@@ -498,9 +581,9 @@ class DispatcherController extends Controller
                         'profile_picture'   => $path,
                         'idrole'            => $request->idrole,
                         'updated_by'        => auth()->guard('api')->user()->id,
-                    ]); 
+                    ]);
 
-            $dispatcher2 = User::with(["vendor","enterprise","role","dispatcher_profile"])                   
+            $dispatcher2 = User::with(["vendor","enterprise","role","dispatcher_profile"])
                     ->where('users.id', $id)
                     ->first();
 
@@ -511,7 +594,7 @@ class DispatcherController extends Controller
             EventLog::insertLog($trxid, $reason, $dataraw,$model);
 
             DB::commit();
-            return Response::success($dispatcher2);   
+            return Response::success($dispatcher2);
         } catch (Exception $e) {
             DB::rollBack();
             throw new ApplicationException("drivers.failure_save_driver", ['id' => $id]);
@@ -523,7 +606,7 @@ class DispatcherController extends Controller
     {
         $user = User::where('id',$id)->first();
 
-        if($user->status == Constant::STATUS_SUSPENDED){ 
+        if($user->status == Constant::STATUS_SUSPENDED){
             $jum_transaksi   = Order::where('dispatcher_userid', $id)
                             ->count();
 
@@ -543,13 +626,13 @@ class DispatcherController extends Controller
 
             return Response::success(['id' => $id]);
         }else{
-            throw new ApplicationException("dispatcher.failure_delete_dispatcher", ['id' => $id]);  
+            throw new ApplicationException("dispatcher.failure_delete_dispatcher", ['id' => $id]);
         }
     }
 
 
     private function updateEmailUser(Request $request, $id){
-        
+
         $users            = User::findOrFail($id);
         $status           = Constant::OPTION_DISABLE;
         $role_login       = auth()->guard('api')->user()->idrole ;
@@ -562,20 +645,20 @@ class DispatcherController extends Controller
             Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS,
             Constant::ROLE_DISPATCHER_ONDEMAND
             ];
-        
+
         if( $role_update == Constant::ROLE_SUPERADMIN ){
             $linkurl = env('URL_ADMIN_OPER');
         }
-        elseif( $role_update == Constant::ROLE_VENDOR || $role_update == Constant::ROLE_DRIVER || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS 
+        elseif( $role_update == Constant::ROLE_VENDOR || $role_update == Constant::ROLE_DRIVER || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS
         || $role_update == Constant::ROLE_DISPATCHER_ENTERPRISE_REGULER || $role_update == Constant::ROLE_DISPATCHER_ONDEMAND ){
             $linkurl = env('URL_VENDOR');
         }elseif( $role_update == Constant::ROLE_ENTERPRISE  ){
             $ClientEnterprises = ClientEnterprise::where('identerprise',$users->client_enterprise_identerprise)->first();
             $linkurl = $ClientEnterprises->site_url;
         }
-        
-        
-        if($users){    
+
+
+        if($users){
 
             if($role_login == Constant::ROLE_SUPERADMIN){
                     $status   = Constant::OPTION_ENABLE;
@@ -599,18 +682,18 @@ class DispatcherController extends Controller
             }else{
                 $status = Constant::OPTION_DISABLE;
             }
-            
+
             if($status == Constant::OPTION_ENABLE){
                 if($new_email != $users->email && $new_email != ""){
                     $users->status = Constant::STATUS_INACTIVE;
                     $users->update();
-                
+
                     $checkEmail = User::where('email', $new_email)->first();
                     if ($checkEmail)
                     {
                         throw new ApplicationException("change_email.already_exist", ['email' => $new_email]);
                     }
-                    
+
                     $linkurl = env('URL_ADMIN_OPER');
 
                     $changeEmail = ChangeEmail::updateOrCreate(
@@ -621,12 +704,12 @@ class DispatcherController extends Controller
                             'token'     => str_random(60)
                             ]
                     );
-    
+
                     if ($users && $changeEmail){
                         $users->notify(
                             new EmailActivation($changeEmail->new_email)
                         );
-    
+
                         \Notification::route('mail', $changeEmail->new_email)
                     ->notify(new EmailActivationRequest($changeEmail->token,$linkurl));
                 }
@@ -646,13 +729,13 @@ class DispatcherController extends Controller
             }
         }
     }
-    
+
 
     /**
-     * resend activation 
+     * resend activation
      *
      * @param  [integer] idvendor
-     * 
+     *
      */
     public function resendactivation(Request $request)
     {
@@ -711,11 +794,11 @@ class DispatcherController extends Controller
             Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS,
             Constant::ROLE_DISPATCHER_ONDEMAND
         ];
-        
+
 
         if(empty(auth()->guard('api')->user()->vendor_idvendor)){
             throw new ApplicationException("errors.access_denied");
-        }        
+        }
 
         $users          = User::whereIn('idrole', $dispatcherRole)
                             ->whereIn('status',[Constant::STATUS_ACTIVE,Constant::STATUS_SUSPENDED])
@@ -726,7 +809,7 @@ class DispatcherController extends Controller
                             ->where('vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor)
                             ->count();
         $users_suspend  = User::whereIn('idrole', $dispatcherRole)
-                            ->where('status', Constant::STATUS_SUSPENDED) 
+                            ->where('status', Constant::STATUS_SUSPENDED)
                             ->where('vendor_idvendor',auth()->guard('api')->user()->vendor_idvendor)
                             ->count();
 
