@@ -270,6 +270,7 @@ Route::group([
     ], function() {
         Route::get('/{link}', 'OrderB2CController@showByLink');
         Route::get('/phone/latest/{phone}', 'OrderB2CController@getLatestByPhone');
+        Route::get('/link/latest/{phone}', 'OrderB2CController@getLatestOrderLink');
     });
 
     Route::group([

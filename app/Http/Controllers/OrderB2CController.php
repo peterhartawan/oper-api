@@ -25,6 +25,20 @@ class OrderB2CController extends Controller
         return Response::success($detail);
     }
 
+    public function getLatestOrderLink($phone){
+        $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
+
+        $latestOrderB2C = OrderB2C::latest('id')
+            ->where('customer_id', $customer_id)
+            ->whereNotIn('status', [4, 5, 6])
+            ->first();
+
+        if(empty($latestOrderB2C))
+            throw new ApplicationException("orders.not_found");
+
+        return Response::success($latestOrderB2C->link);
+    }
+
     public function getLatestByPhone($phone){
         $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
 
@@ -55,7 +69,7 @@ class OrderB2CController extends Controller
             'destination_name' => $latestOrderOT->destination_name,
             'destination_latitude' => $latestOrderOT->destination_latitude,
             'destination_longitude' => $latestOrderOT->destination_longitude,
-            'booking_time' => $latestOrderOT->booking_time
+            'booking_time' => strval($latestOrderOT->booking_time)
         ];
 
         return Response::success($latestOrder);
