@@ -25,27 +25,26 @@ class OrderB2CController extends Controller
         return Response::success($detail);
     }
 
-    public function getLatestOrderLink($phone){
+    public function getLatest($phone){
         $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
 
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('customer_id', $customer_id)
-            ->whereNotIn('status', [4, 5, 6])
+            ->whereNotIn('status', [5,6])
             ->first();
 
         if(empty($latestOrderB2C))
             throw new ApplicationException("orders.not_found");
 
-        return Response::success($latestOrderB2C->link);
+        return Response::success($latestOrderB2C);
     }
 
-    public function getLatestByPhone($phone){
+    public function getFormData($phone){
         $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
 
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('customer_id', $customer_id)
             ->first();
-
 
         if(empty($latestOrderB2C))
             throw new ApplicationException("orders.not_found");

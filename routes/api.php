@@ -269,8 +269,8 @@ Route::group([
         'prefix' => 'order-b2c'
     ], function() {
         Route::get('/{link}', 'OrderB2CController@showByLink');
-        Route::get('/phone/latest/{phone}', 'OrderB2CController@getLatestByPhone');
-        Route::get('/link/latest/{phone}', 'OrderB2CController@getLatestOrderLink');
+        Route::get('/latest/{phone}', 'OrderB2CController@getLatest');
+        Route::get('/form/{phone}', 'OrderB2CController@getFormData');
     });
 
     Route::group([
