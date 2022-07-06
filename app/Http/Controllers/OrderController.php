@@ -17,6 +17,7 @@ use App\Models\RequestOTP;
 use App\Models\MobileNotification;
 use App\Models\VehicleType;
 use App\Models\VehicleBrand;
+use App\Models\B2C\OrderB2C;
 use App\Services\Response;
 use App\Services\Validate;
 use App\Exceptions\ApplicationException;
@@ -40,6 +41,7 @@ use App\Http\Helpers\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
+use App\Models\B2C\CustomerB2C;
 
 class OrderController extends Controller
 {
@@ -77,12 +79,6 @@ class OrderController extends Controller
                             }
                         }
                     });
-
-                    // if($checkAttendance->count() <= 0){
-                    //     $order->is_today_checkin = false;
-                    // }else{
-                    //     $order->is_today_checkin = true;
-                    // }
                 } else {
                     $message = 'orders.empty_task';
                 }
@@ -108,12 +104,6 @@ class OrderController extends Controller
                             }
                         }
                     });
-
-                    // if($checkAttendance->count() <= 0){
-                    //     $order->is_today_checkin = false;
-                    // }else{
-                    //     $order->is_today_checkin = true;
-                    // }
                 } else {
                     $message = 'orders.empty_task';
                 }
@@ -294,6 +284,67 @@ class OrderController extends Controller
                     'vehicle_brand_id' => $request->vehicle_brand_id
                 ]
             );
+
+            //B2C
+            if($identerprise == env('B2C_IDENTERPRISE')){
+                // register customer if not exist
+                Validate::request($request->all(), [
+                    'service_type_id' => "nullable|integer|digits:1",
+                    'local_city' => "nullable|integer|digits:1",
+                    'insurance' => "nullable|integer|digits:1",
+                    'stay' => "nullable|integer|digits:1",
+                    'user_email' => "required|string",
+                    'user_gender' => "nullable|integer|digits:1",
+                ]);
+                $service_type_id = $request->service_type_id;
+                $local_city = $request->local_city;
+                $insurance = $request->insurance;
+                $stay = $request->stay;
+                $user_email = $request->user_email;
+                $user_gender = $request->user_gender;
+
+                //latest order id
+                $latest_id = Order::on('mysql')
+                    ->selectRaw('max(idorder) as latest_id')
+                    ->first()
+                    ->latest_id;
+
+                //randomize sha1 for order link
+                $base_val = mt_rand();
+                $link = sha1($base_val);
+
+                //do the insert
+                // customer data
+                // check if customer already registered
+
+                CustomerB2C::updateOrCreate(
+                    ['phone' => $request->user_phonenumber],
+                    [
+                        'phone'     => $request->user_phonenumber,
+                        'email'     => $user_email,
+                        'fullname'  => $request->user_fullname,
+                        'gender'    => $user_gender
+                    ]
+                );
+
+                $customer_id = CustomerB2C::where('phone', $request->user_phonenumber)->first()->id;
+
+                // order b2c
+                $order_b2c_data = [
+                    'customer_id'           => $customer_id,
+                    'oper_task_order_id'    => $latest_id,
+                    'link'                  => $link,
+                    'service_type_id'       => $service_type_id,
+                    'local_city'            => $local_city,
+                    'insurance'             => $insurance,
+                    'stay'                  => $stay,
+                    'notes'                 => $request->message ?? ""
+                ];
+
+                // dd($order_b2c_data);
+
+                OrderB2C::create($order_b2c_data);
+            }
 
             DB::commit();
 
@@ -532,6 +583,14 @@ class OrderController extends Controller
             'reason_cancel' => $request->reason_cancel,
             'updated_by'    => $request->user()->id
         ]);
+
+        if($identerprise == env('B2C_IDENTERPRISE')){
+            $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
+
+            $b2c_order->update([
+                'status'    => 6
+            ]);
+        }
 
 
         // $driver             = Driver::where("users_id",$data_order->driver_userid)
@@ -777,6 +836,13 @@ class OrderController extends Controller
 
             foreach ($usercliententeprise as $email) {
                 $email->notify(new OrderNotification($orderan));
+            }
+
+            if($identerprise == env('B2C_IDENTERPRISE')){
+                OrderB2C::where('oper_task_order_id', $request->idorder)
+                    ->update([
+                        'status' => 1
+                    ]);
             }
 
             return Response::success($order->first());

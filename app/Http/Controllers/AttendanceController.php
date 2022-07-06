@@ -25,6 +25,7 @@ use Illuminate\Http\Resources\Json\PaginatedResourceResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use App\Http\Helpers\EventLog;
+use App\Models\B2C\OrderB2C;
 use Illuminate\Support\Facades\Log;
 
 class AttendanceController extends Controller
@@ -40,6 +41,7 @@ class AttendanceController extends Controller
         ]);
 
         $idrole         = auth()->guard('api')->user()->idrole;
+        $identerprise   = auth()->guard('api')->user()->client_enterprise_identerprise;
 
         if($idrole == Constant::ROLE_DRIVER){
             //validasi jarak untuk driver
@@ -83,8 +85,6 @@ class AttendanceController extends Controller
 
         }
 
-
-
         $checkAttendance = Attendance::
                         where('users_id', auth()->guard('api')->user()->id)
                         ->where("clock_in",">=",Carbon::today()->toDateString());
@@ -106,6 +106,34 @@ class AttendanceController extends Controller
 
             DB::beginTransaction();
             try {
+                //Check B2C
+                if($identerprise == env("B2C_IDENTERPRISE")){
+                    //empty link
+                    $request_link = $request->link;
+                    if(empty($request_link)){
+                        throw new ApplicationException("attendance.failure_b2c_empty_link");
+                    }
+
+                    //query for b2c order & link
+                    $order_b2c = OrderB2C::where('link', $request_link)->first();
+                    if(empty($order_b2c)){
+                        throw new ApplicationException("attendance.failure_b2c_qr_not_found");
+                    }
+
+                    $link = $order_b2c->link;
+                    //link mismatch
+                    if($request_link != $link){
+                        throw new ApplicationException("attendance.failure_b2c_qr_mismatch");
+                    }
+
+                    //link matched
+                    //update order status
+                    OrderB2C::where('link', $request_link)
+                        ->update([
+                            'status' => 2,
+                            'time_start' => Carbon::now(),
+                        ]);
+                }
 
                 $attendance = new Attendance();
 
@@ -152,6 +180,8 @@ class AttendanceController extends Controller
             'longitude' => 'nullable|string'
         ]);
 
+        $identerprise   = auth()->guard('api')->user()->client_enterprise_identerprise;
+
         $attendance =  Attendance::
                         where('users_id', auth()->guard('api')->user()->id)
                         ->whereNull("clock_out")
@@ -161,6 +191,34 @@ class AttendanceController extends Controller
         if($attendance){
 
             try {
+                //Check B2C
+                if($identerprise == env("B2C_IDENTERPRISE")){
+                    //empty link
+                    $request_link = $request->link;
+                    if(empty($request_link)){
+                        throw new ApplicationException("attendance.failure_b2c_empty_link");
+                    }
+
+                    //query for b2c order & link
+                    $order_b2c = OrderB2C::where('link', $request_link)->first();
+                    if(empty($order_b2c)){
+                        throw new ApplicationException("attendance.failure_b2c_qr_not_found");
+                    }
+
+                    $link = $order_b2c->link;
+                    //link mismatch
+                    if($request_link != $link){
+                        throw new ApplicationException("attendance.failure_b2c_qr_mismatch");
+                    }
+
+                    //link matched
+                    //update order status
+                    OrderB2C::where('link', $request_link)
+                        ->update([
+                            'status' => 3,
+                            'time_end' => Carbon::now(),
+                        ]);
+                }
 
                 $attendance->update([
                     'users_id' => auth()->guard('api')->user()->id,

@@ -137,7 +137,11 @@ class RoleAccess
         "WebNotificationController" => "all",
         "ImportController" => ["importOrder"],
         "AttendanceController" => ["show", "reporting"],
-        "DriverRequestController" => "all"
+        "DriverRequestController" => "all",
+        "OrderB2CController" => ["showByLink", "getLatestByPhone"],
+        "RatingB2CController" => ["store"],
+        "OTPB2CController" => ["store", "verify"],
+        "CustomerB2CController" => ["getCustomerByPhone"],
     ];
 
     const DISPATCHER_ONDEMAND = [

@@ -79,4 +79,8 @@ return [
         'code'          => 41115,
         'status_code'   => 422,
         'message'       => "Failed to save bulk order :id."],
+    'not_found' => [
+        'code'          => 41116,
+        'status_code'   => 422,
+        'message'       => "Order not found."],
 ];
