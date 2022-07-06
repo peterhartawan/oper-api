@@ -27,4 +27,9 @@ class OrderB2C extends Model
         'stay',
         'notes',
     ];
+
+    public function customer()
+	{
+		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'id');
+	}
 }

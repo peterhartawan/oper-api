@@ -21,7 +21,7 @@ class OrderB2CController extends Controller
     public function showByLink($link)
     {
         $order_b2c = OrderB2C::where('link', $link);
-        $detail = $order_b2c->first();
+        $detail = $order_b2c->with(['customer'])->first();
         return Response::success($detail);
     }
 

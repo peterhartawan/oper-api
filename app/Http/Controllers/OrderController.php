@@ -122,7 +122,7 @@ class OrderController extends Controller
         $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
         $order_connection = $this->switchOrderConnection($identerprise);
 
-        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template"])
+        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template", "vehicle_branch"])
             ->where('idorder', $id)->first();
 
         if ($order !== NULL) {
