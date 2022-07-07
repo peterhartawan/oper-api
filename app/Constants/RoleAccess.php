@@ -133,7 +133,7 @@ class RoleAccess
         "VehicleTypeController" => "all",
         "PlacesController" => "all",
         "VehicleBrandController" => "all",
-        "TrackingController" => ["listTrackingTask", "listTrackingAttendance"],
+        "TrackingController" => ["listTrackingTask", "listTrackingAttendance", "listTrackingTaskWithDriver"],
         "WebNotificationController" => "all",
         "ImportController" => ["importOrder"],
         "AttendanceController" => ["show", "reporting"],

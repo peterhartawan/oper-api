@@ -196,6 +196,7 @@ Route::group([
         'prefix' => 'tracking'
       ], function() {
         Route::get('/task', 'TrackingController@listTrackingTask');
+        Route::get('/taskwdriver', 'TrackingController@listTrackingTaskWithDriver');
         Route::get('/attendance', 'TrackingController@listTrackingAttendance');
     });
 
