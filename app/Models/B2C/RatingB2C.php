@@ -16,6 +16,7 @@ class RatingB2C extends Model
 
     protected $fillable = [
         'b2c_order_id',
+        'driver_id',
         'rating',
         'comment',
     ];

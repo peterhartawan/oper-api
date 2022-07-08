@@ -174,7 +174,8 @@ class TrackingController extends Controller
 
         $trackingtask               = $tracking_task_connection
                                         ->where('status', Constant::STATUS_ACTIVE)
-                                        ->with(['order', 'order.driver']);
+                                        ->with(['order', 'order.driver'])
+                                        ->orderBy('created_at', 'desc');
 
         if(!empty($idorder)){
             $trackingtask = $trackingtask->where("idorder",$idorder);

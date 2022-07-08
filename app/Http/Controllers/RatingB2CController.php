@@ -16,6 +16,7 @@ class RatingB2CController extends Controller
     {
         Validate::request($request->all(), [
             'b2c_order_id'  => 'int|required|unique:b2c.rating',
+            'driver_id'     => 'int|required',
             'rating'        => 'int|required',
             'comment'       => "string",
         ]);
@@ -23,6 +24,7 @@ class RatingB2CController extends Controller
         //do the insert
         $rating_b2c_data = [
             'b2c_order_id'  => $request->b2c_order_id,
+            'driver_id'     => $request->driver_id,
             'rating'        => $request->rating,
             'comment'       => $request->comment,
         ];
@@ -43,7 +45,17 @@ class RatingB2CController extends Controller
             return Response::success($rating_b2c);
         } catch (Exception $e) {
             DB::rollBack();
-            throw new ApplicationException("orders.failure_create_order");
+            throw new ApplicationException("rating.failure_create_rating");
         }
+    }
+
+    public function getRatingByDriverId($driver_id){
+        $rating = RatingB2C::where('driver_id', $driver_id)->avg('rating');
+
+        if(empty($rating)){
+            throw new ApplicationException("rating.not_found");
+        }
+
+        return Response::success($rating);
     }
 }

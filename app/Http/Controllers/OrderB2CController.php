@@ -6,6 +6,7 @@ use App\Exceptions\ApplicationException;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\OrderB2C;
 use App\Models\Order;
+use DB;
 use App\Services\Response;
 use App\Services\Validate;
 use Illuminate\Http\Request;
@@ -72,5 +73,33 @@ class OrderB2CController extends Controller
         ];
 
         return Response::success($latestOrder);
+    }
+
+    public function cancelOrder(Request $request){
+        Validate::request($request->all(), [
+            'link'  => 'required'
+        ]);
+
+        $link = $request->link;
+
+        $order = OrderB2C::where('link', $link)->first();
+
+        if(empty($order)){
+            throw new ApplicationException("orders.not_found");
+        }
+
+        DB::commit();
+
+        try{
+            $canceledOrder = OrderB2C::where('link', $link)
+                ->update([
+                    'status' => 5
+                ]);
+
+            return Response::success($canceledOrder);
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw new ApplicationException("ofailure_delete_order");
+        }
     }
 }

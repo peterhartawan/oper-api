@@ -272,13 +272,14 @@ Route::group([
         Route::get('/{link}', 'OrderB2CController@showByLink');
         Route::get('/latest/{phone}', 'OrderB2CController@getLatest');
         Route::get('/form/{phone}', 'OrderB2CController@getFormData');
+        Route::post('/cancel', 'OrderB2CController@cancelOrder');
     });
 
     Route::group([
         'prefix' => 'rating-b2c'
     ], function() {
         Route::post('/', 'RatingB2CController@store');
-        Route::post('/verify', 'RatingB2CController@verify');
+        Route::get('/driver/{driver_id}', 'RatingB2CController@getRatingByDriverId');
     });
 
     Route::group([
