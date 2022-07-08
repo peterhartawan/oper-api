@@ -111,6 +111,11 @@ class Constant
     const DELAY_TASK = 5;
     const DELAY_ATTENDANCE = 30;
 
+    #QONTAK TEMPLATE ID
+    const QONTAK_TEMPLATE_ID_OTP = "5f3c160c-b33d-4dff-a2be-ff6d80782d83";
+    const QONTAK_TEMPLATE_ID_ORDER_CREATED = "2c5869d1-4bb1-4d0e-aef2-f438ae09cd5e";
+    const QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED = "ae184133-bdb5-4674-9094-051273ab1329";
+
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');
         return $oClass->getConstants();

@@ -28,10 +28,10 @@ abstract class ApiHandler{
                     'Accept' => 'application/json'
                 ];
 
-                $options["query"] = $params; 
+                $options["query"] = $params;
             }else{
                 if($multipart) {
-                        
+
                     $multipart_params = [];
                     foreach ($params as $key => $param) {
                         if (!empty($param)) {
@@ -47,7 +47,7 @@ abstract class ApiHandler{
                                     "contents" => $param
                                 ];
                             }
-                        } 
+                        }
                     }
 
                     $options["multipart"] = $multipart_params;
@@ -77,7 +77,7 @@ abstract class ApiHandler{
 
             Log::alert('REQUEST_INFO: \n\n URI: '.$uri.'\n\n Body: '.json_encode($params));
             Log::alert('REQUEST_RESPONSE: '.json_encode((string) $response->getBody()));
-            
+
             return json_decode((string) $response->getBody());
         }catch(RequestException $e){
             $response = $e->getResponse();

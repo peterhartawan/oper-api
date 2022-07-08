@@ -42,6 +42,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
+use App\Services\QontakHandler;
 
 class OrderController extends Controller
 {
@@ -344,6 +345,16 @@ class OrderController extends Controller
                 // dd($order_b2c_data);
 
                 OrderB2C::create($order_b2c_data);
+
+                // BLAST
+                $qontakHandler = new QontakHandler();
+                $qontakHandler->sendMessage(
+                    "62".$request->user_phonenumber,
+                    "Order Created",
+                    Constant::QONTAK_TEMPLATE_ID_ORDER_CREATED,
+                    []
+                );
+                // return Response::success($qontakHandler);
             }
 
             DB::commit();
@@ -839,10 +850,22 @@ class OrderController extends Controller
             }
 
             if($identerprise == env('B2C_IDENTERPRISE')){
-                OrderB2C::where('oper_task_order_id', $request->idorder)
+                $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
                     ->update([
                         'status' => 1
                     ]);
+
+                // Blast WA
+                // get phonenumber
+                $customer_id = OrderB2C::where('oper_task_order_id', $request->idorder)->customer_id;
+                $phone = CustomerB2C::where('id', $customer_id)->phone;
+                $qontakHandler = new QontakHandler();
+                $qontakHandler->sendMessage(
+                    "62".$phone,
+                    "DRIVER ASSIGNED",
+                    Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
+                    []
+                );
             }
 
             return Response::success($order->first());

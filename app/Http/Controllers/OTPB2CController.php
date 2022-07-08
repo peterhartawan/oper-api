@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\Constant;
 use App\Models\B2C\OTPB2C;
 use App\Services\Response;
 use App\Services\Validate;
 use DB;
 use App\Exceptions\ApplicationException;
+use App\Services\QontakHandler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -35,7 +37,23 @@ class OTPB2CController extends Controller
             //create new rating
             $otp = OTPB2C::create($otp_data);
 
-            return Response::success($otp);
+            // BLAST
+            $qontakHandler = new QontakHandler();
+
+            $response = $qontakHandler->sendMessage(
+                "62".$otp->phone,
+                "OTP",
+                Constant::QONTAK_TEMPLATE_ID_OTP,
+                [
+                    [
+                        "key"=> "1",
+                        "value"=> "otp",
+                        "value_text"=> $otp->code
+                    ]
+                ]
+            );
+
+            return Response::success($response);
         } catch (Exception $e) {
             DB::rollBack();
             throw new ApplicationException("otp.failed_send_otp");

@@ -43,6 +43,9 @@ class OrderB2CController extends Controller
     public function getFormData($phone){
         $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
 
+        if(empty($customer_id))
+            throw new ApplicationException("customers.not_found");
+
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('customer_id', $customer_id)
             ->first();
