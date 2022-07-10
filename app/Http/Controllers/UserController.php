@@ -177,11 +177,11 @@ class UserController extends Controller
                 $detail_user->driver_profile->is_on_order = Constant::BOOLEAN_FALSE;
             }
 
-            if($detail_user->client_enterprise_identerprise == env('B2C_IDENTERPRISE')){
-                $detail_user->is_b2c = true;
-            } else {
-                $detail_user->is_b2c = false;
-            }
+            // if($detail_user->client_enterprise_identerprise == env('B2C_IDENTERPRISE')){
+            //     $detail_user->is_b2c = true;
+            // } else {
+            //     $detail_user->is_b2c = false;
+            // }
         }
         elseif (in_array($role_login, $employeeRole)) {
             //query employee

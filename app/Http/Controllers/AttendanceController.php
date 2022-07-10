@@ -106,34 +106,34 @@ class AttendanceController extends Controller
 
             DB::beginTransaction();
             try {
-                //Check B2C
-                if($identerprise == env("B2C_IDENTERPRISE")){
-                    //empty link
-                    $request_link = $request->link;
-                    if(empty($request_link)){
-                        throw new ApplicationException("attendance.failure_b2c_empty_link");
-                    }
+                // //Check B2C
+                // if($identerprise == env("B2C_IDENTERPRISE")){
+                //     //empty link
+                //     $request_link = $request->link;
+                //     if(empty($request_link)){
+                //         throw new ApplicationException("attendance.failure_b2c_empty_link");
+                //     }
 
-                    //query for b2c order & link
-                    $order_b2c = OrderB2C::where('link', $request_link)->first();
-                    if(empty($order_b2c)){
-                        throw new ApplicationException("attendance.failure_b2c_qr_not_found");
-                    }
+                //     //query for b2c order & link
+                //     $order_b2c = OrderB2C::where('link', $request_link)->first();
+                //     if(empty($order_b2c)){
+                //         throw new ApplicationException("attendance.failure_b2c_qr_not_found");
+                //     }
 
-                    $link = $order_b2c->link;
-                    //link mismatch
-                    if($request_link != $link){
-                        throw new ApplicationException("attendance.failure_b2c_qr_mismatch");
-                    }
+                //     $link = $order_b2c->link;
+                //     //link mismatch
+                //     if($request_link != $link){
+                //         throw new ApplicationException("attendance.failure_b2c_qr_mismatch");
+                //     }
 
-                    //link matched
-                    //update order status
-                    OrderB2C::where('link', $request_link)
-                        ->update([
-                            'status' => 2,
-                            'time_start' => Carbon::now(),
-                        ]);
-                }
+                //     //link matched
+                //     //update order status
+                //     OrderB2C::where('link', $request_link)
+                //         ->update([
+                //             'status' => 2,
+                //             'time_start' => Carbon::now(),
+                //         ]);
+                // }
 
                 $attendance = new Attendance();
 
@@ -191,34 +191,34 @@ class AttendanceController extends Controller
         if($attendance){
 
             try {
-                //Check B2C
-                if($identerprise == env("B2C_IDENTERPRISE")){
-                    //empty link
-                    $request_link = $request->link;
-                    if(empty($request_link)){
-                        throw new ApplicationException("attendance.failure_b2c_empty_link");
-                    }
+                // //Check B2C
+                // if($identerprise == env("B2C_IDENTERPRISE")){
+                //     //empty link
+                //     $request_link = $request->link;
+                //     if(empty($request_link)){
+                //         throw new ApplicationException("attendance.failure_b2c_empty_link");
+                //     }
 
-                    //query for b2c order & link
-                    $order_b2c = OrderB2C::where('link', $request_link)->first();
-                    if(empty($order_b2c)){
-                        throw new ApplicationException("attendance.failure_b2c_qr_not_found");
-                    }
+                //     //query for b2c order & link
+                //     $order_b2c = OrderB2C::where('link', $request_link)->first();
+                //     if(empty($order_b2c)){
+                //         throw new ApplicationException("attendance.failure_b2c_qr_not_found");
+                //     }
 
-                    $link = $order_b2c->link;
-                    //link mismatch
-                    if($request_link != $link){
-                        throw new ApplicationException("attendance.failure_b2c_qr_mismatch");
-                    }
+                //     $link = $order_b2c->link;
+                //     //link mismatch
+                //     if($request_link != $link){
+                //         throw new ApplicationException("attendance.failure_b2c_qr_mismatch");
+                //     }
 
-                    //link matched
-                    //update order status
-                    OrderB2C::where('link', $request_link)
-                        ->update([
-                            'status' => 3,
-                            'time_end' => Carbon::now(),
-                        ]);
-                }
+                //     //link matched
+                //     //update order status
+                //     OrderB2C::where('link', $request_link)
+                //         ->update([
+                //             'status' => 3,
+                //             'time_end' => Carbon::now(),
+                //         ]);
+                // }
 
                 $attendance->update([
                     'users_id' => auth()->guard('api')->user()->id,
