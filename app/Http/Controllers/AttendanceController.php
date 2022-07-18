@@ -354,7 +354,7 @@ class AttendanceController extends Controller
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')
                 ->join('driver', 'driver.users_id', '=', 'attendance.users_id')
-                ->join('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
+                ->leftJoin('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
                 ->where('users.vendor_idvendor', auth()->guard('api')->user()->vendor_idvendor)
                 ->orderBy("attendance.id","desc");
 
@@ -363,7 +363,7 @@ class AttendanceController extends Controller
                 ->where('users.status', Constant::STATUS_ACTIVE)
                 ->join('users', 'users.id', '=', 'attendance.users_id')
                 ->join('driver', 'driver.users_id', '=', 'attendance.users_id')
-                ->join('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
+                ->leftJoin('client_enterprise', 'client_enterprise.identerprise', '=', 'users.client_enterprise_identerprise')
                 ->where('users.client_enterprise_identerprise', auth()->guard('api')->user()->client_enterprise_identerprise)
                 ->orderBy("attendance.id","desc");
             }
