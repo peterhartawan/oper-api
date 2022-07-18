@@ -368,9 +368,9 @@ class OrderController extends Controller
 
                 $paketText = "9 Jam";
                 if($service_type_id == 1)
-                    $genderText = "12 Jam";
+                    $paketText = "12 Jam";
                 if($service_type_id == 2)
-                    $genderText = "4 Jam";
+                    $paketText = "4 Jam";
 
                 $luarKotaText = "Tidak";
                 if($local_city == 0){
@@ -472,7 +472,7 @@ class OrderController extends Controller
                 // Admin
                 $qontakHandler->sendMessage(
                     // override this number
-                    "628176557087",
+                    "6281365972928",
                     "Order Created",
                     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                     [

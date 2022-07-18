@@ -6,6 +6,7 @@ use App\Exceptions\ApplicationException;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\OrderB2C;
 use App\Models\Order;
+use App\Models\VehicleBrand;
 use DB;
 use App\Services\Response;
 use App\Services\Validate;
@@ -60,6 +61,8 @@ class OrderB2CController extends Controller
         if(empty($latestOrderOT))
             throw new ApplicationException("orders.not_found");
 
+        $vehicleBrandName = VehicleBrand::where('id', $latestOrderOT->vehicle_brand_id)->first()->brand_name;
+
         $latestOrder = [
             'insurance' => $latestOrderB2C->insurance,
             'local_city' => $latestOrderB2C->local_city,
@@ -67,7 +70,9 @@ class OrderB2CController extends Controller
             'service_type_id' => $latestOrderB2C->service_type_id,
             'stay' => $latestOrderB2C->stay,
             'vehicle_brand_id' => $latestOrderOT->vehicle_brand_id,
+            'vehicle_brand' => $vehicleBrandName,
             'vehicle_type' => $latestOrderOT->vehicle_type,
+            'vehicle_transmission' => $latestOrderOT->vehicle_transmission,
             'client_vehicle_license' => $latestOrderOT->client_vehicle_license,
             'destination_name' => $latestOrderOT->destination_name,
             'destination_latitude' => $latestOrderOT->destination_latitude,

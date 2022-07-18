@@ -287,6 +287,7 @@ Route::group([
     ], function() {
         Route::post('/', 'OTPB2CController@store');
         Route::post('/verify', 'OTPB2CController@verify');
+        Route::post('/phone', 'OTPB2CController@isPhoneSucceedOTP');
     });
 
     Route::group([

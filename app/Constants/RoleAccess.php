@@ -140,7 +140,7 @@ class RoleAccess
         "DriverRequestController" => "all",
         "OrderB2CController" => ["showByLink", "getLatest", "getFormData", "cancelOrder"],
         "RatingB2CController" => ["store", "getRatingByDriverId"],
-        "OTPB2CController" => ["store", "verify"],
+        "OTPB2CController" => ["store", "verify", "isPhoneSucceedOTP"],
         "CustomerB2CController" => ["getCustomerByPhone"],
     ];
 

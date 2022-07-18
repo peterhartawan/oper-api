@@ -53,5 +53,10 @@ return [
     'failed_send_otp' => [
         'code'          => 42410,
         'status_code'   => 422,
-        'message'       => "failed send OTP."]
+        'message'       => "failed send OTP."],
+    'not_otp_yet'     => [
+        'code'          => 42411,
+        'status_code'   => 404,
+        'message'       => "User hasn't verified OTP yet."]
+    ]
 ];

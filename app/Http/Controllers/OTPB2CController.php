@@ -100,4 +100,21 @@ class OTPB2CController extends Controller
             throw new ApplicationException("otp.failed_send_otp");
         }
     }
+
+    public function isPhoneSucceedOTP(Request $request){
+        Validate::request($request->all(), [
+            'phone' => 'required',
+        ]);
+
+        $otp = OTPB2C::latest('created_at')
+            ->where('phone', $request->phone)
+            ->where('status', 1)
+            ->first();
+
+        //OTP found
+        if(empty($otp))
+            throw new ApplicationException("otp.not_otp_yet");
+
+        return Response::success($otp->phone);
+    }
 }
