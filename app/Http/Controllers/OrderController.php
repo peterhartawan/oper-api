@@ -154,10 +154,6 @@ class OrderController extends Controller
         Validate::request($request->all(), [
             'task_template_id'  => 'int|required|exists:task_template',
             'booking_time'      => "required|date_format:" . Constant::DATE_FORMAT,
-            'origin_latitude'   => "required|string",
-            'origin_longitude'  => "required|string",
-            'destination_latitude'  => "required|string",
-            'destination_longitude'  => "required|string",
             'client_vehicle_license'  => "nullable|min:3|max:12|string",
             'user_fullname' => "required|min:3|max:45|string",
             'user_phonenumber' => "required|min:10|max:45|string",
@@ -171,10 +167,20 @@ class OrderController extends Controller
             'destination_name'  => 'nullable|string'
         ]);
 
+        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
+
+        if($identerprise != env('CARS24_IDENTERPRISE')){
+            Validate::request($request->all(), [
+                'origin_latitude'   => "required|string",
+                'origin_longitude'  => "required|string",
+                'destination_latitude'  => "required|string",
+                'destination_longitude'  => "required|string",
+            ]);
+        }
+
         $vehicle_type   = strtoupper($request->vehicle_type);
         $userId = auth()->guard('api')->user()->id;
         $idRole = auth()->guard('api')->user()->idrole;
-        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
         $client_userid = null;
         $dispatcher_userid = null;
 
