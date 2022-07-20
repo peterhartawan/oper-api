@@ -229,6 +229,8 @@ class DriverController extends Controller
             'nik' => 'required|min:16|max:16|string',
             'gender' => 'required|string',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE,
+            'ktp' => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE,
+            'sim' => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE,
             'attendance_latitude'   => ['nullable', 'regex:/^[-]?(([0-8]?[0-9])\.(\d+))|(90(\.0+)?)$/'],
             'attendance_longitude'  => ['nullable', 'regex:/^[-]?((((1[0-7][0-9])|([0-9]?[0-9]))\.(\d+))|180(\.0+)?)$/'],
         ]);
@@ -256,6 +258,18 @@ class DriverController extends Controller
                 'created_by'=> $request->user()->id
             ]);
 
+            if($request->hasfile('ktp')){
+                $pathKTP = Storage::putFile("/public/images/ktp", $request->file('ktp'));
+            } else {
+                $pathKTP = '';
+            }
+
+            if($request->hasfile('sim')){
+                $pathSIM = Storage::putFile("/public/images/sim", $request->file('sim'));
+            } else {
+                $pathSIM = '';
+            }
+
             $Driver = Driver::create([
                 'users_id' => $user->id,
                 'birthdate' => $request->birthdate,
@@ -265,7 +279,9 @@ class DriverController extends Controller
                 'gender' => $request->gender,
                 'attendance_latitude' => $request->attendance_latitude,
                 'attendance_longitude' => $request->attendance_longitude,
-                'created_by'=> $request->user()->id
+                'created_by'=> $request->user()->id,
+                'foto_ktp' => $pathKTP,
+                'foto_sim' => $pathSIM
             ]);
 
 
@@ -349,7 +365,9 @@ class DriverController extends Controller
             'email'         => 'required|min:10|max:80|email',
             'attendance_latitude'   => ['nullable', 'regex:/^[-]?(([0-8]?[0-9])\.(\d+))|(90(\.0+)?)$/'],
             'attendance_longitude'  => ['nullable', 'regex:/^[-]?((((1[0-7][0-9])|([0-9]?[0-9]))\.(\d+))|180(\.0+)?)$/'],
-            'photo'                 => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE
+            'photo'                 => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE,
+            'ktp'                 => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE,
+            'sim'                 => 'nullable|image|mimes:jpeg,png,jpg|max:'.Constant::MAX_IMAGE_SIZE
         ]);
         DB::beginTransaction();
         try {
@@ -389,6 +407,22 @@ class DriverController extends Controller
                 $user       = $Users->update([
                     'profile_picture'   => $path,
                     'updated_by'        => $request->user()->id
+                ]);
+            }
+
+            if($request->hasfile('ktp')){
+                $path = Storage::putFile("/public/images/ktp", $request->file('ktp'));
+                // Update KTP
+                $updateKTP = $Drivers->update([
+                    'foto_ktp'      => $path,
+                ]);
+            }
+
+            if($request->hasfile('sim')){
+                $path = Storage::putFile("/public/images/sim", $request->file('sim'));
+                // Update SIM
+                $updateSIM = $Drivers->update([
+                    'foto_sim'      => $path,
                 ]);
             }
 

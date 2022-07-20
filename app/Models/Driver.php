@@ -62,7 +62,9 @@ class Driver extends Model
 		'insurance_policy_number',
 		'attendance_latitude',
 		'attendance_longitude',
-        'stay_idplaces'
+        'stay_idplaces',
+        'foto_ktp',
+        'foto_sim'
 	];
 
 	public function drivertype()

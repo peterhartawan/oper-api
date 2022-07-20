@@ -37,4 +37,16 @@ return [
         'code'          => 40106,
         'status_code'   => 423,
         'message'       => "Unable to clock in, check setting location driver."],
+    'failure_b2c_empty_link' => [
+        'code'          => 40105,
+        'status_code'   => 422,
+        'message'       => "Unable to clock in, qr data is empty."],
+    'failure_b2c_qr_not_found' => [
+        'code'          => 40105,
+        'status_code'   => 422,
+        'message'       => "Unable to clock in, order data not found."],
+    'failure_b2c_qr_mismatch' => [
+        'code'          => 40105,
+        'status_code'   => 422,
+        'message'       => "Unable to clock in, wrong order."],
 ];

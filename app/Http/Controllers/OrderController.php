@@ -17,6 +17,7 @@ use App\Models\RequestOTP;
 use App\Models\MobileNotification;
 use App\Models\VehicleType;
 use App\Models\VehicleBrand;
+use App\Models\B2C\OrderB2C;
 use App\Services\Response;
 use App\Services\Validate;
 use App\Exceptions\ApplicationException;
@@ -40,6 +41,9 @@ use App\Http\Helpers\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
+use App\Models\B2C\CustomerB2C;
+use App\Models\Vehicles;
+use App\Services\QontakHandler;
 
 class OrderController extends Controller
 {
@@ -77,12 +81,6 @@ class OrderController extends Controller
                             }
                         }
                     });
-
-                    // if($checkAttendance->count() <= 0){
-                    //     $order->is_today_checkin = false;
-                    // }else{
-                    //     $order->is_today_checkin = true;
-                    // }
                 } else {
                     $message = 'orders.empty_task';
                 }
@@ -108,12 +106,6 @@ class OrderController extends Controller
                             }
                         }
                     });
-
-                    // if($checkAttendance->count() <= 0){
-                    //     $order->is_today_checkin = false;
-                    // }else{
-                    //     $order->is_today_checkin = true;
-                    // }
                 } else {
                     $message = 'orders.empty_task';
                 }
@@ -132,7 +124,7 @@ class OrderController extends Controller
         $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
         $order_connection = $this->switchOrderConnection($identerprise);
 
-        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template"])
+        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template", "vehicle_branch"])
             ->where('idorder', $id)->first();
 
         if ($order !== NULL) {
@@ -162,10 +154,6 @@ class OrderController extends Controller
         Validate::request($request->all(), [
             'task_template_id'  => 'int|required|exists:task_template',
             'booking_time'      => "required|date_format:" . Constant::DATE_FORMAT,
-            'origin_latitude'   => "required|string",
-            'origin_longitude'  => "required|string",
-            'destination_latitude'  => "required|string",
-            'destination_longitude'  => "required|string",
             'client_vehicle_license'  => "nullable|min:3|max:12|string",
             'user_fullname' => "required|min:3|max:45|string",
             'user_phonenumber' => "required|min:10|max:45|string",
@@ -179,10 +167,20 @@ class OrderController extends Controller
             'destination_name'  => 'nullable|string'
         ]);
 
+        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
+
+        if($identerprise != env('CARS24_IDENTERPRISE')){
+            Validate::request($request->all(), [
+                'origin_latitude'   => "required|string",
+                'origin_longitude'  => "required|string",
+                'destination_latitude'  => "required|string",
+                'destination_longitude'  => "required|string",
+            ]);
+        }
+
         $vehicle_type   = strtoupper($request->vehicle_type);
         $userId = auth()->guard('api')->user()->id;
         $idRole = auth()->guard('api')->user()->idrole;
-        $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
         $client_userid = null;
         $dispatcher_userid = null;
 
@@ -294,6 +292,276 @@ class OrderController extends Controller
                     'vehicle_brand_id' => $request->vehicle_brand_id
                 ]
             );
+
+            //B2C
+            if($identerprise == env('B2C_IDENTERPRISE')){
+                // register customer if not exist
+                Validate::request($request->all(), [
+                    'service_type_id' => "nullable|integer|digits:1",
+                    'local_city' => "nullable|integer|digits:1",
+                    'insurance' => "nullable|integer|digits:1",
+                    'stay' => "nullable|integer|digits:1",
+                    'user_email' => "required|string",
+                    'user_gender' => "nullable|integer|digits:1",
+                ]);
+                $service_type_id = $request->service_type_id;
+                $local_city = $request->local_city;
+                $insurance = $request->insurance;
+                $stay = $request->stay;
+                $user_email = $request->user_email;
+                $user_gender = $request->user_gender;
+
+                //latest order id
+                $latest_id = Order::on('mysql')
+                    ->selectRaw('max(idorder) as latest_id')
+                    ->first()
+                    ->latest_id;
+
+                //randomize sha1 for order link
+                $base_val = mt_rand();
+                $link = sha1($base_val);
+
+                //do the insert
+                // customer data
+                // check if customer already registered
+
+                CustomerB2C::updateOrCreate(
+                    ['phone' => $request->user_phonenumber],
+                    [
+                        'phone'     => $request->user_phonenumber,
+                        'email'     => $user_email,
+                        'fullname'  => $request->user_fullname,
+                        'gender'    => $user_gender
+                    ]
+                );
+
+                $customer_id = CustomerB2C::where('phone', $request->user_phonenumber)->first()->id;
+
+                // order b2c
+                $order_b2c_data = [
+                    'customer_id'           => $customer_id,
+                    'oper_task_order_id'    => $latest_id,
+                    'link'                  => $link,
+                    'service_type_id'       => $service_type_id,
+                    'local_city'            => $local_city,
+                    'insurance'             => $insurance,
+                    'stay'                  => $stay,
+                    'notes'                 => $request->message ?? ""
+                ];
+
+                // dd($order_b2c_data);
+
+                OrderB2C::create($order_b2c_data);
+
+                // BLAST
+
+                // Customer
+                $qontakHandler = new QontakHandler();
+                $qontakHandler->sendMessage(
+                    "62".$request->user_phonenumber,
+                    "Order Created",
+                    Constant::QONTAK_TEMPLATE_ID_ORDER_CREATED,
+                    []
+                );
+
+                $genderText = "Wanita";
+                if($user_gender == 1)
+                    $genderText = "Pria";
+                if($user_gender == 2)
+                    $genderText = "Lainnya";
+
+                $vehicleBrandName = VehicleBrand::where('id', $request->vehicle_brand_id)->first()->brand_name;
+
+                $paketText = "9 Jam";
+                if($service_type_id == 1)
+                    $paketText = "12 Jam";
+                if($service_type_id == 2)
+                    $paketText = "4 Jam";
+
+                $luarKotaText = "Tidak";
+                if($local_city == 0){
+                    $luarKotaText = "Ya";
+                    $stayText = ", Pulang-Pergi";
+                    if($stay == 1)
+                        $stayText = ", Menginap";
+                    $luarKotaText = $luarKotaText . $stayText;
+                }
+
+                $asuransiText = "Tidak";
+                if($insurance == 1)
+                    $asuransiText = "Ya";
+
+                // Dispatcher
+                $dispatcherB2cHp = auth()->guard('api')->user()->phonenumber;
+                $qontakHandler->sendMessage(
+                    "62".$dispatcherB2cHp,
+                    "Order Created",
+                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    [
+                        [
+                            "key"=> "1",
+                            "value"=> "nama",
+                            "value_text"=> $request->user_fullname
+                        ],
+                        [
+                            "key"=> "2",
+                            "value"=> "hp",
+                            "value_text"=> $request->user_phonenumber
+                        ],
+                        [
+                            "key"=> "3",
+                            "value"=> "email",
+                            "value_text"=> $user_email
+                        ],
+                        [
+                            "key"=> "4",
+                            "value"=> "gender",
+                            "value_text"=> $genderText
+                        ],
+                        [
+                            "key"=> "5",
+                            "value"=> "merek",
+                            "value_text"=> $vehicleBrandName
+                        ],
+                        [
+                            "key"=> "6",
+                            "value"=> "tipe",
+                            "value_text"=> $request->vehicle_type
+                        ],
+                        [
+                            "key"=> "7",
+                            "value"=> "transmisi",
+                            "value_text"=> $request->vehicle_transmission
+                        ],
+                        [
+                            "key"=> "8",
+                            "value"=> "plat",
+                            "value_text"=> $request->client_vehicle_license
+                        ],
+                        [
+                            "key"=> "9",
+                            "value"=> "alamat",
+                            "value_text"=> $request->destination_name
+                        ],
+                        [
+                            "key"=> "10",
+                            "value"=> "paket",
+                            "value_text"=> $paketText
+                        ],
+                        [
+                            "key"=> "11",
+                            "value"=> "tanggal",
+                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
+                        ],
+                        [
+                            "key"=> "12",
+                            "value"=> "waktu",
+                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                        ],
+                        [
+                            "key"=> "13",
+                            "value"=> "luar_kota",
+                            "value_text"=> $luarKotaText
+                        ],
+                        [
+                            "key"=> "14",
+                            "value"=> "asuransi",
+                            "value_text"=> $asuransiText
+                        ],
+                        [
+                            "key"=> "15",
+                            "value"=> "catatan",
+                            "value_text"=> $request->message ?? "Tidak ada catatan."
+                        ],
+                    ]
+                );
+                // Admin
+                $qontakHandler->sendMessage(
+                    // override this number
+                    "6281365972928",
+                    "Order Created",
+                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    [
+                        [
+                            "key"=> "1",
+                            "value"=> "nama",
+                            "value_text"=> $request->user_fullname
+                        ],
+                        [
+                            "key"=> "2",
+                            "value"=> "hp",
+                            "value_text"=> $request->user_phonenumber
+                        ],
+                        [
+                            "key"=> "3",
+                            "value"=> "email",
+                            "value_text"=> $user_email
+                        ],
+                        [
+                            "key"=> "4",
+                            "value"=> "gender",
+                            "value_text"=> $genderText
+                        ],
+                        [
+                            "key"=> "5",
+                            "value"=> "merek",
+                            "value_text"=> $vehicleBrandName
+                        ],
+                        [
+                            "key"=> "6",
+                            "value"=> "tipe",
+                            "value_text"=> $request->vehicle_type
+                        ],
+                        [
+                            "key"=> "7",
+                            "value"=> "transmisi",
+                            "value_text"=> $request->vehicle_transmission
+                        ],
+                        [
+                            "key"=> "8",
+                            "value"=> "plat",
+                            "value_text"=> $request->client_vehicle_license
+                        ],
+                        [
+                            "key"=> "9",
+                            "value"=> "alamat",
+                            "value_text"=> $request->destination_name
+                        ],
+                        [
+                            "key"=> "10",
+                            "value"=> "paket",
+                            "value_text"=> $paketText
+                        ],
+                        [
+                            "key"=> "11",
+                            "value"=> "tanggal",
+                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
+                        ],
+                        [
+                            "key"=> "12",
+                            "value"=> "waktu",
+                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                        ],
+                        [
+                            "key"=> "13",
+                            "value"=> "luar_kota",
+                            "value_text"=> $luarKotaText
+                        ],
+                        [
+                            "key"=> "14",
+                            "value"=> "asuransi",
+                            "value_text"=> $asuransiText
+                        ],
+                        [
+                            "key"=> "15",
+                            "value"=> "catatan",
+                            "value_text"=> $request->message ?? "Tidak ada catatan."
+                        ],
+                    ]
+                );
+
+                // return Response::success($qontakHandler);
+            }
 
             DB::commit();
 
@@ -532,6 +800,14 @@ class OrderController extends Controller
             'reason_cancel' => $request->reason_cancel,
             'updated_by'    => $request->user()->id
         ]);
+
+        // if($identerprise == env('B2C_IDENTERPRISE')){
+        //     $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
+
+        //     $b2c_order->update([
+        //         'status'    => 6
+        //     ]);
+        // }
 
 
         // $driver             = Driver::where("users_id",$data_order->driver_userid)
@@ -778,6 +1054,25 @@ class OrderController extends Controller
             foreach ($usercliententeprise as $email) {
                 $email->notify(new OrderNotification($orderan));
             }
+
+            // if($identerprise == env('B2C_IDENTERPRISE')){
+            //     $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
+            //         ->update([
+            //             'status' => 1
+            //         ]);
+
+            //     // Blast WA
+            //     // get phonenumber
+            //     $customer_id = OrderB2C::where('oper_task_order_id', $request->idorder)->customer_id;
+            //     $phone = CustomerB2C::where('id', $customer_id)->phone;
+            //     $qontakHandler = new QontakHandler();
+            //     $qontakHandler->sendMessage(
+            //         "62".$phone,
+            //         "DRIVER ASSIGNED",
+            //         Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
+            //         []
+            //     );
+            // }
 
             return Response::success($order->first());
         } catch (Exception $e) {

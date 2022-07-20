@@ -196,6 +196,7 @@ Route::group([
         'prefix' => 'tracking'
       ], function() {
         Route::get('/task', 'TrackingController@listTrackingTask');
+        Route::get('/taskwdriver', 'TrackingController@listTrackingTaskWithDriver');
         Route::get('/attendance', 'TrackingController@listTrackingAttendance');
     });
 
@@ -265,6 +266,37 @@ Route::group([
         Route::post('/{id}', 'DriverRequestController@update');
     });
 
+    Route::group([
+        'prefix' => 'order-b2c'
+    ], function() {
+        Route::get('/{link}', 'OrderB2CController@showByLink');
+        Route::get('/latest/{phone}', 'OrderB2CController@getLatest');
+        Route::get('/form/{phone}', 'OrderB2CController@getFormData');
+        Route::post('/cancel', 'OrderB2CController@cancelOrder');
+    });
+
+    Route::group([
+        'prefix' => 'rating-b2c'
+    ], function() {
+        Route::post('/', 'RatingB2CController@store');
+        Route::get('/driver/{driver_id}', 'RatingB2CController@getRatingByDriverId');
+    });
+
+    Route::group([
+        'prefix' => 'otp'
+    ], function() {
+        Route::post('/', 'OTPB2CController@store');
+        Route::post('/verify', 'OTPB2CController@verify');
+        Route::post('/phone', 'OTPB2CController@isPhoneSucceedOTP');
+    });
+
+    Route::group([
+        'prefix' => 'customer-b2c'
+    ], function() {
+        Route::get('/{phone}', 'CustomerB2CController@getCustomerByPhone');
+    });
+
+
     Route::apiResources([
         'user'              => 'UserController',
         'enterprise'        => 'ClientEnterpriseController',
@@ -283,6 +315,10 @@ Route::group([
         'employeeposition'  => 'EmployeePositionController',
         'tracking'          => 'TrackingController',
         'eventlog'          => 'EventLogController',
-        'driver-requests'    => 'DriverRequestController',
+        'driver-requests'   => 'DriverRequestController',
+        'order-b2c'         => 'OrderB2CController',
+        'rating-b2c'        => 'RatingB2CController',
+        'otp'               => 'OTPB2CController',
+        'customer-b2c'      => 'CustomerB2CController'
     ]);
 });

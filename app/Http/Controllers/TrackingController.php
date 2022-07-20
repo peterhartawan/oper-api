@@ -165,6 +165,25 @@ class TrackingController extends Controller
         }
     }
 
+    public function listTrackingTaskWithDriver(Request $request)
+    {
+        $idorder                    = $request->query('idorder');
+        $identerprise               = auth()->guard('api')->user()->client_enterprise_identerprise;
+
+        $tracking_task_connection   = $this->switchTrackingTaskConnection($identerprise);
+
+        $trackingtask               = $tracking_task_connection
+                                        ->where('status', Constant::STATUS_ACTIVE)
+                                        ->with(['order', 'order.driver'])
+                                        ->orderBy('created_at', 'desc');
+
+        if(!empty($idorder)){
+            $trackingtask = $trackingtask->where("idorder",$idorder);
+        }
+
+        return Response::success($trackingtask->paginate($request->query('limit') ?? 10));
+    }
+
     //get connection for cross-server queries
     private function switchOrderConnection($identerprise){
         $connection = Order::on('mysql');
