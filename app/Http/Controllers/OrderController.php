@@ -801,13 +801,13 @@ class OrderController extends Controller
             'updated_by'    => $request->user()->id
         ]);
 
-        // if($identerprise == env('B2C_IDENTERPRISE')){
-        //     $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
+        if($identerprise == env('B2C_IDENTERPRISE')){
+            $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
 
-        //     $b2c_order->update([
-        //         'status'    => 6
-        //     ]);
-        // }
+            $b2c_order->update([
+                'status'    => 6
+            ]);
+        }
 
 
         // $driver             = Driver::where("users_id",$data_order->driver_userid)
@@ -1055,24 +1055,24 @@ class OrderController extends Controller
                 $email->notify(new OrderNotification($orderan));
             }
 
-            // if($identerprise == env('B2C_IDENTERPRISE')){
-            //     $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
-            //         ->update([
-            //             'status' => 1
-            //         ]);
+            if($identerprise == env('B2C_IDENTERPRISE')){
+                $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
+                    ->update([
+                        'status' => 1
+                    ]);
 
-            //     // Blast WA
-            //     // get phonenumber
-            //     $customer_id = OrderB2C::where('oper_task_order_id', $request->idorder)->customer_id;
-            //     $phone = CustomerB2C::where('id', $customer_id)->phone;
-            //     $qontakHandler = new QontakHandler();
-            //     $qontakHandler->sendMessage(
-            //         "62".$phone,
-            //         "DRIVER ASSIGNED",
-            //         Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
-            //         []
-            //     );
-            // }
+                // Blast WA
+                // get phonenumber
+                // $customer_id = OrderB2C::where('oper_task_order_id', $request->idorder)->customer_id;
+                // $phone = CustomerB2C::where('id', $customer_id)->phone;
+                // $qontakHandler = new QontakHandler();
+                // $qontakHandler->sendMessage(
+                //     "62".$phone,
+                //     "DRIVER ASSIGNED",
+                //     Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
+                //     []
+                // );
+            }
 
             return Response::success($order->first());
         } catch (Exception $e) {
@@ -2136,14 +2136,25 @@ class OrderController extends Controller
                     $next_task     = $this->switchOrderTasksConnection($identerprise)->where('idordertask', $id_nexttask)
                         ->where('order_idorder', $OrderTasks->order_idorder)
                         ->first();
+
                     if ($id_nexttask == $islastorder->idordertask) {
                         $is_last_order = "true";
                     } else {
                         $is_last_order = "false";
                     }
+
                     $updateTaskselanjutnya = $this->switchOrderTasksConnection($identerprise)->where("order_idorder", $OrderTasks->order_idorder)
                         ->where('idordertask', $id_nexttask)
                         ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
+
+                    if($identerprise == env('B2C_IDENTERPRISE')){
+                        $b2c_order = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder);
+
+                        $b2c_order->update([
+                            'status'    => 4
+                        ]);
+                    }
+
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');
                 }
 
