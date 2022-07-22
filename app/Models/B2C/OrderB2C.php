@@ -30,6 +30,6 @@ class OrderB2C extends Model
 
     public function customer()
 	{
-		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'id');
+		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'customer_id','id');
 	}
 }
