@@ -1062,16 +1062,23 @@ class OrderController extends Controller
                     ]);
 
                 // Blast WA
-                // get phonenumber
-                // $customer_id = OrderB2C::where('oper_task_order_id', $request->idorder)->customer_id;
-                // $phone = CustomerB2C::where('id', $customer_id)->phone;
-                // $qontakHandler = new QontakHandler();
-                // $qontakHandler->sendMessage(
-                //     "62".$phone,
-                //     "DRIVER ASSIGNED",
-                //     Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
-                //     []
-                // );
+                $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)->first();
+                $customer_id = $orderb2c->customer_id;
+                $link = "https://operdriverstaging.oper.co.id/dashboard/" . $orderb2c->link;
+                $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+                $qontakHandler = new QontakHandler();
+                $qontakHandler->sendMessage(
+                    "62".$phone,
+                    "DRIVER ASSIGNED",
+                    Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
+                    [
+                        [
+                            "key"=> "1",
+                            "value"=> "link",
+                            "value_text"=> $link
+                        ],
+                    ]
+                );
             }
 
             return Response::success($order->first());
@@ -2153,6 +2160,17 @@ class OrderController extends Controller
                         $b2c_order->update([
                             'status'    => 4
                         ]);
+
+                        $order_b2c = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder)->first();
+                        $customer_id = $order_b2c->customer_id;
+                        $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+                        $qontakHandler = new QontakHandler();
+                        $qontakHandler->sendMessage(
+                            "62".$phone,
+                            "Order Verified",
+                            Constant::QONTAK_TEMPLATE_VERIFIED,
+                            []
+                        );
                     }
 
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');

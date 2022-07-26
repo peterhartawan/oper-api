@@ -25,7 +25,9 @@ use Illuminate\Http\Resources\Json\PaginatedResourceResponse;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use App\Http\Helpers\EventLog;
+use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\OrderB2C;
+use App\Services\QontakHandler;
 use Illuminate\Support\Facades\Log;
 
 class AttendanceController extends Controller
@@ -133,6 +135,16 @@ class AttendanceController extends Controller
                             'status' => 2,
                             'time_start' => Carbon::now()->format('Y-m-d H:i'),
                         ]);
+
+                    $customer_id = $order_b2c->customer_id;
+                    $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+                    $qontakHandler = new QontakHandler();
+                    $qontakHandler->sendMessage(
+                        "62".$phone,
+                        "Order Began",
+                        Constant::QONTAK_TEMPLATE_ORDER_BEGAN,
+                        []
+                    );
                 }
 
                 $attendance = new Attendance();
@@ -218,6 +230,22 @@ class AttendanceController extends Controller
                             'status' => 3,
                             'time_end' => Carbon::now(),
                         ]);
+
+                    $customer_id = $order_b2c->customer_id;
+                    $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+                    $qontakHandler = new QontakHandler();
+                    $qontakHandler->sendMessage(
+                        "62".$phone,
+                        "Order Began",
+                        Constant::QONTAK_TEMPLATE_PAYMENT,
+                        [
+                            [
+                                "key"=> "1",
+                                "value"=> "rekening",
+                                "value_text"=> "Rekening BCA PT. Online Helper Internasional : 889112381239"
+                            ],
+                        ]
+                    );
                 }
 
                 $attendance->update([
