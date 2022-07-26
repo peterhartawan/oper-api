@@ -131,7 +131,7 @@ class AttendanceController extends Controller
                     OrderB2C::where('link', $request_link)
                         ->update([
                             'status' => 2,
-                            'time_start' => Carbon::now(),
+                            'time_start' => Carbon::now()->format('Y-m-d H:i'),
                         ]);
                 }
 

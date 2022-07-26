@@ -26,9 +26,13 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
-        $schedule->command('tracking:delete')
-        ->dailyAt('00:05')
-        ->timezone('Asia/Jakarta');
+        // $schedule->command('tracking:delete')
+        // ->dailyAt('00:05')
+        // ->timezone('Asia/Jakarta');
+        // $schedule->call(function(){
+        //     info('called every minute');
+        // })->everyMinute()->runInBackground();
+        $schedule->command('order:ce')->everyMinute()->runInBackground();
     }
 
     /**

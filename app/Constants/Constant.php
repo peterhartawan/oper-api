@@ -116,6 +116,12 @@ class Constant
     const QONTAK_TEMPLATE_ID_ORDER_CREATED = "2c5869d1-4bb1-4d0e-aef2-f438ae09cd5e";
     const QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN = "306a22f8-60fb-4e89-b257-1b608d25e6dc";
     const QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED = "ae184133-bdb5-4674-9094-051273ab1329";
+    const QONTAK_TEMPLATE_ORDER_BEGAN = "9b03f683-3746-40fa-8452-9163a7d40770";
+    const QONTAK_TEMPLATE_REMINDER_30MIN = "bbf3d465-ae45-4c98-b17c-b41fc2ef5988";
+    const QONTAK_TEMPLATE_REMINDER_OVERTIME = "d166115b-1c9a-4a9a-a370-fdcf2b0d2cf5";
+    const QONTAK_TEMPLATE_PAYMENT = "e6941db5-0db2-4636-80c2-6ad12c285357";
+    const QONTAK_TEMPLATE_VERIFIED = "84434d83-1107-4a2a-9f66-deda164d7839";
+    const QONTAK_TEMPLATE_RATING = "55d79506-0106-4920-9e3d-81448ca5bfa1";
 
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');
