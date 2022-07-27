@@ -23,7 +23,7 @@ use App\Traits\NullToEmptyString;
 class Order extends Model
 {
 	use NullToEmptyString;
-	protected $dates = ['booking_time'];
+	// protected $dates = ['booking_time'];
 	protected $table = 'order';
 	protected $primaryKey = 'idorder';
 	public $timestamps = true;

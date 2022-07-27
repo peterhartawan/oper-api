@@ -124,7 +124,7 @@ class RoleAccess
         "ClientEnterpriseController" => ['show'],
         "DriverController" => ["index", "available_for_order", "orderdriver", "totalAccount"],
         "StaticContentController" => ["show", "slug"],
-        "OrderController" => ["cancel", "show_cancel", "cancelorder", "store", "assign", "index", "update", "show", "open", "inprogress", "complete", "show_inprogress", "show_open", "show_complete", "showByTrxId", "template", "orderdriver", "totalorderweek", "totalordermonth", "totalordertoday"],
+        "OrderController" => ["cancel", "show_cancel", "cancelorder", "store", "assign", "index", "update", "show", "open", "inprogress", "complete", "show_inprogress", "show_open", "show_complete", "showByTrxId", "template", "orderdriver", "totalorderweek", "totalordermonth", "totalordertoday", "unavailableDates"],
         "StaticContentController" => ["show"],
         "TaskTemplateController" => ["index", "show", "tasktemplatereporting"],
         "RoleController" => ["access"],

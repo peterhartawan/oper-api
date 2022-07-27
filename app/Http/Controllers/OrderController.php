@@ -2412,6 +2412,21 @@ class OrderController extends Controller
         return Response::success(["file export" => url($fileexport)]);
     }
 
+    // Get all unavailable dates array
+    public function unavailableDates(){
+        // For now let's test with all orders
+        // $dates = Order::all()->pluck('booking_time');
+        $dates = Order::selectRaw('booking_time, @booking_date:=(DATE(booking_time)) as booking_date, COUNT(@booking_date) as booking_date_count')
+            ->groupBy('booking_date')
+            ->get();
+
+        // Change the date count (at this moment 1) to 10 later on after demo
+        $dates = $dates->where('booking_date_count', 1)->pluck('booking_date');
+        return Response::success($dates);
+
+        // Don't forget to only get dates onward from today
+    }
+
     //get connection for cross-server queries
     private function switchOrderConnection($identerprise){
         $connection = Order::on('mysql');

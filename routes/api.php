@@ -136,6 +136,7 @@ Route::group([
         Route::get('/total-order-today', 'OrderController@totalordertoday');
         Route::get('/total-order-week', 'OrderController@totalorderweek');
         Route::get('/total-order-month', 'OrderController@totalordermonth');
+        Route::get('/unavailable-dates', 'OrderController@unavailableDates');
         //FOR DRIVER
         Route::get('history/{id}', 'OrderController@history_detail');
         Route::get('history', 'OrderController@history');
