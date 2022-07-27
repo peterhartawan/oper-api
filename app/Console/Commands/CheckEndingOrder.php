@@ -65,13 +65,13 @@ class CheckEndingOrder extends Command
             )
             ->with(['customer'])
             ->get();
-        Log::info($orders);
+        // Log::info($orders);
         $qontakHandler = new QontakHandler();
 
         foreach($orders as $order){
             // Reminder ending
             if($order->time_diff == 29){
-                Log::info("Order dengan ID " . $order->id . " 30 min, tembak WA");
+                // Log::info("Order dengan ID " . $order->id . " 30 min, tembak WA");
                 $phone = $order->customer->phone;
                 $paket = 9;
                 $order->service_type_id == 1 ? $paket = 12 : $paket = 4;
@@ -90,7 +90,7 @@ class CheckEndingOrder extends Command
             }
             // Reminder overtime
             if($order->time_diff == -1){
-                Log::info("Order dengan ID " . $order->id . " masuk OVERTIME, tembak WA");
+                // Log::info("Order dengan ID " . $order->id . " masuk OVERTIME, tembak WA");
                 $fullname = $order->customer->fullname;
                 $phone = $order->customer->phone;
                 $paket = 9;

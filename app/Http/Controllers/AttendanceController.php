@@ -228,7 +228,7 @@ class AttendanceController extends Controller
                     OrderB2C::where('link', $request_link)
                         ->update([
                             'status' => 3,
-                            'time_end' => Carbon::now(),
+                            'time_end' => Carbon::now()->format('Y-m-d H:i'),
                         ]);
 
                     $customer_id = $order_b2c->customer_id;

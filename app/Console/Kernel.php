@@ -33,6 +33,7 @@ class Kernel extends ConsoleKernel
         //     info('called every minute');
         // })->everyMinute()->runInBackground();
         $schedule->command('order:ce')->everyMinute()->runInBackground();
+        $schedule->command('order:rating')->everyMinute()->runInBackground();
     }
 
     /**
