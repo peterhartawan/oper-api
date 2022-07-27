@@ -281,6 +281,7 @@ Route::group([
     ], function() {
         Route::post('/', 'RatingB2CController@store');
         Route::get('/driver/{driver_id}', 'RatingB2CController@getRatingByDriverId');
+        Route::get('/link/{link}', 'RatingB2CController@getRatingByLink');
     });
 
     Route::group([

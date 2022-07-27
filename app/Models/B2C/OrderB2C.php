@@ -32,4 +32,9 @@ class OrderB2C extends Model
 	{
 		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'customer_id','id');
 	}
+
+    public function rating()
+    {
+        return $this->hasOne(\App\Models\B2C\RatingB2C::class, 'b2c_order_id', 'id');
+    }
 }

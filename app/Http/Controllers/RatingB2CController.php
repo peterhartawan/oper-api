@@ -18,7 +18,7 @@ class RatingB2CController extends Controller
             'b2c_order_id'  => 'int|required|unique:b2c.rating',
             'driver_id'     => 'int|required',
             'rating'        => 'int|required',
-            'comment'       => "string",
+            'comment'       => "string|nullable",
         ]);
 
         //do the insert
@@ -55,6 +55,14 @@ class RatingB2CController extends Controller
         if(empty($rating)){
             throw new ApplicationException("rating.not_found");
         }
+
+        return Response::success($rating);
+    }
+
+    public function getRatingByLink($link){
+        $rating = OrderB2C::where('link', $link)
+            ->with(['rating'])
+            ->first();
 
         return Response::success($rating);
     }
