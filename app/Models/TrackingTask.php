@@ -23,7 +23,7 @@ class TrackingTask extends Model
      *
      * @var array
      */
-    protected $fillable = ['idorder','latitude','longitude','created_by','status','updated_by'];
+    protected $fillable = ['idorder','latitude','longitude','created_by','status','address','updated_by'];
 
     public function order(){
         return $this->belongsTo(\App\Models\Order::class, 'idorder', 'idorder');
