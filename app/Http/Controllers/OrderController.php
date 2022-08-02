@@ -2417,12 +2417,41 @@ class OrderController extends Controller
         // For now let's test with all orders
         // $dates = Order::all()->pluck('booking_time');
         $dates = Order::selectRaw('booking_time, @booking_date:=(DATE(booking_time)) as booking_date, COUNT(@booking_date) as booking_date_count')
+            ->whereDate('booking_time', '>=', Carbon::now())
             ->groupBy('booking_date')
+            ->orderBy('booking_date', 'desc')
             ->get();
+
+        // Nearest date
+        $latestDate = Carbon::parse($dates->first()->booking_date);
+        $todayDate = Carbon::today();
+        $dayDiff = $latestDate->diffInDays($todayDate);
 
         // Change the date count (at this moment 1) to 10 later on after demo
         $dates = $dates->where('booking_date_count', 1)->pluck('booking_date');
-        return Response::success($dates);
+
+        $days = [];
+
+        for($i = 0; $i <= $dayDiff; $i++){
+            array_push($days, ["booking_date" => Carbon::today()->addDays($i)->format("Y-m-d")]);
+        }
+
+        $dayCollection = collect($days);
+
+        $availableDatesCollection = $dayCollection->whereNotIn('booking_date', $dates);
+
+        if($availableDatesCollection->count() === 0){
+            $nearestDate = $latestDate->addDays(1)->format("Y-m-d");
+        } else {
+            $nearestDate = $availableDatesCollection->first()['booking_date'];
+        }
+
+        $dateArray = [
+            "unavailable_dates" => $dates,
+            "nearest_date" => $nearestDate,
+        ];
+
+        return Response::success($dateArray);
 
         // Don't forget to only get dates onward from today
     }
