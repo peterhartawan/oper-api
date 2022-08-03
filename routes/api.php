@@ -274,6 +274,7 @@ Route::group([
         Route::get('/latest/{phone}', 'OrderB2CController@getLatest');
         Route::get('/form/{phone}', 'OrderB2CController@getFormData');
         Route::post('/cancel', 'OrderB2CController@cancelOrder');
+        Route::get('/invoice/{link}', 'OrderB2CController@getInvoiceData');
     });
 
     Route::group([

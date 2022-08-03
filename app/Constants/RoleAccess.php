@@ -138,7 +138,7 @@ class RoleAccess
         "ImportController" => ["importOrder"],
         "AttendanceController" => ["show", "reporting"],
         "DriverRequestController" => "all",
-        "OrderB2CController" => ["showByLink", "getLatest", "getFormData", "cancelOrder"],
+        "OrderB2CController" => ["showByLink", "getLatest", "getFormData", "cancelOrder", "getInvoiceData"],
         "RatingB2CController" => ["store", "getRatingByDriverId", "getRatingByLink"],
         "OTPB2CController" => ["store", "verify", "isPhoneSucceedOTP"],
         "CustomerB2CController" => ["getCustomerByPhone"],
