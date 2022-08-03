@@ -44,9 +44,9 @@ class RatingOrder extends Command
     {
         $orders = OrderB2C::where('status', 4)
             ->select(
-                'time_end',
+                'updated_at',
                 DB::Raw("@timenow:=(NOW()) as time_now"),
-                DB::Raw("TIMESTAMPDIFF(MINUTE, time_end, @timenow) as time_diff"),
+                DB::Raw("TIMESTAMPDIFF(MINUTE, updated_at, @timenow) as time_diff"),
                 'orders.*'
             )
             ->with(['customer'])
@@ -55,7 +55,7 @@ class RatingOrder extends Command
         $qontakHandler = new QontakHandler();
 
         foreach($orders as $order){
-            if($order->time_diff == 5){
+            if($order->time_diff == 4){
                 $phone = $order->customer->phone;
                 $link = $order->link;
                 $qontakHandler->sendMessage(
