@@ -244,6 +244,11 @@ class AttendanceController extends Controller
                                 "value"=> "rekening",
                                 "value_text"=> "Rekening BCA PT. Online Helper Internasional : 889112381239"
                             ],
+                            [
+                                "key"=> "2",
+                                "value"=> "link",
+                                "value_text"=> "https://operdriverstaging.oper.co.id/invoice/" . $request_link
+                            ],
                         ]
                     );
                 }
