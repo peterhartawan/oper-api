@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreatePromosTable extends Migration
+class CreateKuponsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,12 @@ class CreatePromosTable extends Migration
      */
     public function up()
     {
-        Schema::create('promos', function (Blueprint $table) {
+        Schema::create('kupons', function (Blueprint $table) {
             $table->increments('id');
-            $table->string('kode', 50);
-            $table->integer('potongan_fixed');
-            $table->integer('jumlah_klaim');
+            $table->integer('promo_id');
+            $table->integer('customer_id');
+            $table->integer('jumlah_kupon');
+            $table->date('waktu_berakhir');
         });
     }
 
@@ -28,6 +29,6 @@ class CreatePromosTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('promos');
+        Schema::dropIfExists('kupons');
     }
 }

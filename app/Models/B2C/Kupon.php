@@ -4,16 +4,17 @@ namespace App\Models\B2C;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Promo extends Model
+class Kupon extends Model
 {
     protected $connection = 'b2c';
-    protected $table = 'promo';
+    protected $table = 'kupon';
     protected $primaryKey = 'id';
     public $timestamps = false;
 
     protected $fillable = [
-        'kode',
-        'potongan_fixed',
-        'jumlah_klaim'
+        'promo_id',
+        'customer_id',
+        'jumlah_kupon',
+        'waktu_berakhir'
     ];
 }

@@ -299,6 +299,11 @@ Route::group([
         Route::get('/{phone}', 'CustomerB2CController@getCustomerByPhone');
     });
 
+    Route::group([
+        'prefix' => 'coupon'
+    ], function() {
+        Route::post('/claim', 'KuponController@claim');
+    });
 
     Route::apiResources([
         'user'              => 'UserController',

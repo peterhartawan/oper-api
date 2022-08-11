@@ -10,6 +10,7 @@ use App\Services\Response;
 use App\Services\Validate;
 use DB;
 use App\Exceptions\ApplicationException;
+use App\Models\B2C\CustomerB2C;
 use App\Services\QontakHandler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -114,6 +115,11 @@ class OTPB2CController extends Controller
 
                         // Update first Promo
                         FirstPromo::create([
+                            'phone' => $otp->phone
+                        ]);
+
+                        // Create customer
+                        CustomerB2C::create([
                             'phone' => $otp->phone
                         ]);
                     }
