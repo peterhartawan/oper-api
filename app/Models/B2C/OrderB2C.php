@@ -26,6 +26,7 @@ class OrderB2C extends Model
         'insurance',
         'stay',
         'notes',
+        'kupon_id',
     ];
 
     public function customer()

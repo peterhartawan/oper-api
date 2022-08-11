@@ -122,6 +122,7 @@ class Constant
     const QONTAK_TEMPLATE_PAYMENT = "88a8ae48-3184-4156-a14e-62c95c7d44ab";
     const QONTAK_TEMPLATE_VERIFIED = "84434d83-1107-4a2a-9f66-deda164d7839";
     const QONTAK_TEMPLATE_RATING = "55d79506-0106-4920-9e3d-81448ca5bfa1";
+    const QONTAK_TEMPLATE_FIRST_PROMO = "5e029760-31ab-4228-a50a-adb5ef609c79";
 
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');

@@ -30,7 +30,12 @@ class OrderB2CController extends Controller
     }
 
     public function getLatest($phone){
-        $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
+        $customer = CustomerB2C::where('phone', $phone)->first();
+
+        if(empty($customer))
+            throw new ApplicationException("customers.not_found");
+
+        $customer_id = $customer->id;
 
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('customer_id', $customer_id)

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Constants\Constant;
 use App\Models\B2C\OTPB2C;
+use App\Models\B2C\FirstPromo;
+use App\Models\B2C\Promo;
 use App\Services\Response;
 use App\Services\Validate;
 use DB;
@@ -87,6 +89,34 @@ class OTPB2CController extends Controller
                         ->where('phone', $request->phone)
                         ->where('code', $request->code)
                         ->update(['status' => 1]);
+
+                    // BLAST FIRST PROMO
+                    $firstPromo = FirstPromo::where('phone', $request->phone)->first();
+
+                    if(empty($firstPromo)){
+                        // Get first promo code
+                        $firstPromoCode = Promo::where('id', 1)->first()->kode;
+
+                        $qontakHandler = new QontakHandler();
+
+                        $qontakHandler->sendMessage(
+                            "62".$otp->phone,
+                            "OTP",
+                            Constant::QONTAK_TEMPLATE_FIRST_PROMO,
+                            [
+                                [
+                                    "key"=> "1",
+                                    "value"=> "kode_promo",
+                                    "value_text"=> $firstPromoCode
+                                ]
+                            ]
+                        );
+
+                        // Update first Promo
+                        FirstPromo::create([
+                            'phone' => $otp->phone
+                        ]);
+                    }
 
                     return Response::success($otp->phone);
                 }

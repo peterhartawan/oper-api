@@ -4,18 +4,14 @@ namespace App\Models\B2C;
 
 use Illuminate\Database\Eloquent\Model;
 
-class CustomerB2C extends Model
+class FirstPromo extends Model
 {
     protected $connection = 'b2c';
-    protected $table = 'customers';
+    protected $table = 'first_promo';
     protected $primaryKey = 'id';
-	public $timestamps = true;
+    public $timestamps = false;
 
     protected $fillable = [
         'phone',
-        'email',
-        'fullname',
-        'gender',
-        'is_first_otp'
     ];
 }
