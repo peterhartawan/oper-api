@@ -42,6 +42,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
+use App\Models\B2C\Kupon;
 use App\Models\Vehicles;
 use App\Services\QontakHandler;
 
@@ -303,11 +304,13 @@ class OrderController extends Controller
                     'stay' => "nullable|integer|digits:1",
                     'user_email' => "required|string",
                     'user_gender' => "nullable|integer|digits:1",
+                    'kupon_id' => "nullable|integer"
                 ]);
                 $service_type_id = $request->service_type_id;
                 $local_city = $request->local_city;
                 $insurance = $request->insurance;
                 $stay = $request->stay;
+                $kupon_id = $request->kupon_id;
                 $user_email = $request->user_email;
                 $user_gender = $request->user_gender;
 
@@ -346,12 +349,17 @@ class OrderController extends Controller
                     'local_city'            => $local_city,
                     'insurance'             => $insurance,
                     'stay'                  => $stay,
-                    'notes'                 => $request->message ?? ""
+                    'notes'                 => $request->message ?? "",
+                    'kupon_id'              => $kupon_id
                 ];
 
                 // dd($order_b2c_data);
 
                 OrderB2C::create($order_b2c_data);
+
+                if($kupon_id != null) {
+                    Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
+                }
 
                 // BLAST
 

@@ -38,4 +38,9 @@ class OrderB2C extends Model
     {
         return $this->hasOne(\App\Models\B2C\RatingB2C::class, 'b2c_order_id', 'id');
     }
+
+    public function kupon()
+    {
+        return $this->hasOne(\App\Models\B2C\Kupon::class, 'id', 'kupon_id')->with(['promo']);
+    }
 }

@@ -14,6 +14,18 @@ use Illuminate\Support\Facades\DB;
 
 class KuponController extends Controller
 {
+    public function getKuponById($kupon_id){
+        $kupon = Kupon::where('id', $kupon_id)
+            ->with(['promo'])
+            ->get();
+
+        if($kupon->isEmpty()){
+            throw new ApplicationException('kupon.not_found');
+        }
+
+        return Response::success($kupon);
+    }
+
     public function getKuponByCustomerId($customer_id){
         $kupon = Kupon::where('customer_id', $customer_id)
             ->with(['promo'])

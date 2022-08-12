@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ApplicationException;
 use App\Models\B2C\CustomerB2C;
+use App\Models\B2C\Kupon;
 use App\Models\B2C\OrderB2C;
 use App\Models\B2C\RatingB2C;
 use App\Models\Order;
@@ -25,7 +26,7 @@ class OrderB2CController extends Controller
     public function showByLink($link)
     {
         $order_b2c = OrderB2C::where('link', $link);
-        $detail = $order_b2c->with(['customer'])->first();
+        $detail = $order_b2c->with(['customer', 'kupon'])->first();
         return Response::success($detail);
     }
 
@@ -70,6 +71,13 @@ class OrderB2CController extends Controller
 
         $vehicleBrandName = VehicleBrand::where('id', $latestOrderOT->vehicle_brand_id)->first()->brand_name;
 
+        $kupon = null;
+        if($latestOrderB2C->kupon_id != null){
+            $kupon = Kupon::where('id', $latestOrderB2C->kupon_id)
+                ->with(['promo'])
+                ->first();
+        }
+
         $latestOrder = [
             'insurance' => $latestOrderB2C->insurance,
             'local_city' => $latestOrderB2C->local_city,
@@ -84,7 +92,8 @@ class OrderB2CController extends Controller
             'destination_name' => $latestOrderOT->destination_name,
             'destination_latitude' => $latestOrderOT->destination_latitude,
             'destination_longitude' => $latestOrderOT->destination_longitude,
-            'booking_time' => strval($latestOrderOT->booking_time)
+            'booking_time' => strval($latestOrderOT->booking_time),
+            'kupon' => $kupon
         ];
 
         return Response::success($latestOrder);
@@ -121,9 +130,9 @@ class OrderB2CController extends Controller
     public function getInvoiceData($link){
         // Read data
         $order_b2c = OrderB2C::where('link', $link)
-            ->where('status', '>=', 4)
+            ->where('status', '>=', 3)
             ->where('status', '!=', 6)
-            ->with(['customer'])
+            ->with(['customer', 'kupon'])
             ->first();
 
         if(empty($order_b2c)){
@@ -165,13 +174,22 @@ class OrderB2CController extends Controller
         }
 
         // Currency Formatting
-        $paket_cost = 220000;
-        $order_b2c->service_type_id == 1 ? $paket_cost = 270000 : $paket_cost = 135000;
+        $paket_cost = 250000;
+        $order_b2c->service_type_id == 1 ? $paket_cost = 300000 : $paket_cost = 149000;
+
+        // Insurance
         $insurance_cost = $order_b2c->insurance * 25000;
+
+        // Overtime
         $overtime_cost = $overtime * 35000;
-        $overall_cost = $paket_cost + $insurance_cost + $overtime_cost;
+
+        // Kupon
+        $cost_no_kupon = $paket_cost + $insurance_cost + $overtime_cost;
+        $overall_cost = $order_b2c->kupon != null ? $cost_no_kupon - $order_b2c->kupon->promo->potongan_fixed : $cost_no_kupon;
 
         $formatted_paket_cost = number_format($paket_cost, 0, ",", ".");
+
+        $formatted_kupon_cost = $order_b2c->kupon != null ? number_format($order_b2c->kupon->promo->potongan_fixed) : "";
 
         $formatted_insurance_cost = 0;
         if($insurance_cost > 0)
@@ -183,7 +201,7 @@ class OrderB2CController extends Controller
 
         $formatted_overall_cost = number_format($overall_cost);
 
-        $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_insurance_cost, $formatted_overtime_cost, $formatted_overall_cost);
+        $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_insurance_cost, $formatted_overtime_cost, $formatted_overall_cost, $formatted_kupon_cost);
 
         return Response::success($mail);
     }
@@ -201,8 +219,9 @@ class MyMail {
     public $insurance_cost;
     public $overtime_cost;
     public $overall_cost;
+    public $kupon_cost;
 
-    public function __construct($order_ot, $order_b2c, $parsed_time_start, $parsed_time_end, $overtime, $elapsed_time, $rating, $paket_cost, $insurance_cost, $overtime_cost, $overall_cost)
+    public function __construct($order_ot, $order_b2c, $parsed_time_start, $parsed_time_end, $overtime, $elapsed_time, $rating, $paket_cost, $insurance_cost, $overtime_cost, $overall_cost, $kupon_cost)
     {
         $this->order_ot = $order_ot;
         $this->order_b2c = $order_b2c;
@@ -215,5 +234,6 @@ class MyMail {
         $this->insurance_cost = $insurance_cost;
         $this->overtime_cost = $overtime_cost;
         $this->overall_cost = $overall_cost;
+        $this->kupon_cost = $kupon_cost;
     }
 }
