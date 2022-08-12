@@ -302,6 +302,7 @@ Route::group([
     Route::group([
         'prefix' => 'coupon'
     ], function() {
+        Route::get('/{customer_id}', 'KuponController@getKuponByCustomerId');
         Route::post('/claim', 'KuponController@claim');
     });
 

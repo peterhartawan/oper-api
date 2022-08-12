@@ -17,4 +17,9 @@ class Kupon extends Model
         'jumlah_kupon',
         'waktu_berakhir'
     ];
+
+    public function promo()
+    {
+        return $this->hasOne(\App\Models\B2C\Promo::class, 'id', 'promo_id');
+    }
 }

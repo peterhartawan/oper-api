@@ -14,6 +14,7 @@ class Promo extends Model
     protected $fillable = [
         'kode',
         'potongan_fixed',
-        'jumlah_klaim'
+        'jumlah_klaim',
+        'hari_berlaku'
     ];
 }

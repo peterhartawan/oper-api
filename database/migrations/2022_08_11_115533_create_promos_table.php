@@ -18,6 +18,7 @@ class CreatePromosTable extends Migration
             $table->string('kode', 50);
             $table->integer('potongan_fixed');
             $table->integer('jumlah_klaim');
+            $table->integer('hari_berlaku');
         });
     }
 
