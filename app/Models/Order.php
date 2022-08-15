@@ -69,7 +69,8 @@ class Order extends Model
 		'employee_userid',
 		'origin_name',
 		'destination_name',
-		'dispatch_at'
+		'dispatch_at',
+        'polis_link'
 	];
 
 	public function enterprise()

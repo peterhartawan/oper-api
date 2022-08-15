@@ -28,6 +28,7 @@ class KuponController extends Controller
 
     public function getKuponByCustomerId($customer_id){
         $kupon = Kupon::where('customer_id', $customer_id)
+            ->where('jumlah_kupon', '>', 0)
             ->with(['promo'])
             ->get();
 

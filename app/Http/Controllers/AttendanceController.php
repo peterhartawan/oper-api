@@ -27,6 +27,8 @@ use Illuminate\Support\Collection;
 use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\OrderB2C;
+use App\Models\Order;
+use App\Services\PolisHandler;
 use App\Services\QontakHandler;
 use Illuminate\Support\Facades\Log;
 
@@ -117,7 +119,10 @@ class AttendanceController extends Controller
                     }
 
                     //query for b2c order & link
-                    $order_b2c = OrderB2C::where('link', $request_link)->first();
+                    $order_b2c = OrderB2C::where('link', $request_link)
+                        ->with(['customer'])
+                        ->first();
+
                     if(empty($order_b2c)){
                         throw new ApplicationException("attendance.failure_b2c_qr_not_found");
                     }
@@ -138,6 +143,53 @@ class AttendanceController extends Controller
 
                     $customer_id = $order_b2c->customer_id;
                     $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+
+                    // Get OT Order
+                    $order_ot = Order::where('idorder', $order_b2c->oper_task_order_id)
+                        ->with(['driver', 'vehicle_branch'])
+                        ->first();
+
+                    // Create insurance order array
+                    $insuranceOrderB2C = [
+                        "trx_id" => $order_ot->trx_id,
+                        "task_template_id" => $order_ot->task_template_task_template_id,
+                        "booking_start" => $order_ot->booking_time,
+                        "driver_name" => $order_ot->driver->user->name,
+                        "client_vehicle_license" => $order_ot->client_vehicle_license,
+                        "user_fullname" => $order_ot->user_fullname,
+                        "user_phonenumber" => $order_ot->user_phonenumber,
+                        "user_email" => $order_b2c->customer->email,
+                        "user_gender" => $order_b2c->customer->gender == 0 ? "Wanita" : "Pria",
+                        "vehicle_owner" => $order_ot->vehicle_owner,
+                        "vehicle_brand_id" => $order_ot->vehicle_branch->brand_name,
+                        "vehicle_type" => $order_ot->vehicle_type,
+                        "vehicle_year" => $order_ot->vehicle_year,
+                        "vehicle_transmission" => $order_ot->vehicle_transmission,
+                        "message" => $order_ot->message,
+                        "origin_latitude" => $order_ot->origin_latitude,
+                        "origin_longitude" => $order_ot->origin_longitude,
+                        "origin_name" => $order_ot->origin_name,
+                        "destination_latitude" => $order_ot->destination_latitude,
+                        "destination_longitude" => $order_ot->destination_longitude,
+                        "destination_name" => $order_ot->destination_name,
+                        "service_type_id" => $order_b2c->service_type_id,
+                        "local_city" => $order_b2c->local_city,
+                        "insurance" => $order_b2c->insurance,
+                        "stay" => $order_b2c->stay
+                    ];
+
+                    // Submit Insurance
+                    $polisHandler = new PolisHandler();
+                    $insuranceResponse = $polisHandler->submitOrderB2C($insuranceOrderB2C);
+
+                    // Insurance Submitted
+                    if($insuranceResponse->status == "200"){
+                        Order::where('idorder', $order_b2c->oper_task_order_id)->update([
+                            "polis_link" => $insuranceResponse->certificate_url
+                        ]);
+                    }
+
+                    // Blast WA
                     $qontakHandler = new QontakHandler();
                     $qontakHandler->sendMessage(
                         "62".$phone,

@@ -40,7 +40,7 @@ class OrderB2CController extends Controller
 
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('customer_id', $customer_id)
-            ->whereNotIn('status', [5,6])
+            ->where('status', '!=', 6)
             ->first();
 
         if(empty($latestOrderB2C))
