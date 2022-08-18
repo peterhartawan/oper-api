@@ -87,6 +87,7 @@ class OrderB2CController extends Controller
             'vehicle_brand_id' => $latestOrderOT->vehicle_brand_id,
             'vehicle_brand' => $vehicleBrandName,
             'vehicle_type' => $latestOrderOT->vehicle_type,
+            'vehicle_year' => $latestOrderOT->vehicle_year,
             'vehicle_transmission' => $latestOrderOT->vehicle_transmission,
             'client_vehicle_license' => $latestOrderOT->client_vehicle_license,
             'destination_name' => $latestOrderOT->destination_name,
