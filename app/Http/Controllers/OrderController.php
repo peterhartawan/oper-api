@@ -125,7 +125,7 @@ class OrderController extends Controller
         $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
         $order_connection = $this->switchOrderConnection($identerprise);
 
-        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template", "vehicle_branch"])
+        $order = $order_connection->with(["enterprise", "driver.user", "dispatcher", "order_type", "order_tasks", "task_template", "vehicle_branch"])
             ->where('idorder', $id)->first();
 
         if ($order !== NULL) {
@@ -136,6 +136,18 @@ class OrderController extends Controller
                 $order->is_today_checkin = false;
             } else {
                 $order->is_today_checkin = true;
+            }
+
+            if (!empty($order->driver->user->profile_picture)) {
+                $order->profile_picture = env('BASE_API') . Storage::url($order->driver->user->profile_picture);
+            }
+
+            if (!empty($order->driver->foto_ktp)) {
+                $order->foto_ktp = env('BASE_API') . Storage::url($order->driver->foto_ktp);
+            }
+
+            if (!empty($order->driver->foto_sim)) {
+                $order->foto_sim = env('BASE_API') . Storage::url($order->driver->foto_sim);
             }
         } else {
             $message = 'orders.empty_task';
