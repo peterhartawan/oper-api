@@ -14,6 +14,7 @@ use App\Services\Response;
 use App\Services\Validate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class OrderB2CController extends Controller
 {
@@ -201,6 +202,11 @@ class OrderB2CController extends Controller
             $formatted_overtime_cost = number_format($overtime_cost, 0, ",", ".");
 
         $formatted_overall_cost = number_format($overall_cost);
+
+        // Driver photo
+        if (!empty($order_ot->driver->user->profile_picture)) {
+            $order_ot->profile_picture = env('BASE_API') . Storage::url($order_ot->driver->user->profile_picture);
+        }
 
         $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_insurance_cost, $formatted_overtime_cost, $formatted_overall_cost, $formatted_kupon_cost);
 
