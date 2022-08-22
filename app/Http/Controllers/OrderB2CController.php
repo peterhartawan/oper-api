@@ -153,7 +153,7 @@ class OrderB2CController extends Controller
         $carbon_time_start = Carbon::parse($order_b2c->time_start);
         $carbon_time_end = Carbon::parse($order_b2c->time_end);
 
-        $jam_paket = ($order_b2c->service_type_id == 0 ? 9 : ($order_b2c->service_type_id == 1 ? 12 : 4));
+        $jam_paket = ($order_b2c->service_type_id == 0 ? 8 : ($order_b2c->service_type_id == 1 ? 12 : 4));
         // dd($jam_paket);
         $carbon_paket_end = Carbon::parse($order_b2c->time_start)->addHours($jam_paket);
         // dd($carbon_paket_end);
@@ -175,14 +175,14 @@ class OrderB2CController extends Controller
         }
 
         // Currency Formatting
-        $paket_cost = 250000;
-        $order_b2c->service_type_id == 1 ? $paket_cost = 300000 : $paket_cost = 149000;
+        $paket_cost = 239000; //8 Jam
+        $order_b2c->service_type_id == 1 ? $paket_cost = 289000 : $paket_cost = 185000; // 4 Jam
 
         // Insurance
         $insurance_cost = $order_b2c->insurance * 25000;
 
         // Overtime
-        $overtime_cost = $overtime * 35000;
+        $overtime_cost = $overtime * 30000;
 
         // Kupon
         $cost_no_kupon = $paket_cost + $insurance_cost + $overtime_cost;
