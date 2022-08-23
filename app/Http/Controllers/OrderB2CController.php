@@ -160,7 +160,7 @@ class OrderB2CController extends Controller
         // dd($carbon_paket_end);
 
         $overtime = $carbon_paket_end->diffInHours($carbon_time_end, false) + 1;
-        if($overtime < 0)
+        if($carbon_time_end->lt($carbon_paket_end))
             $overtime = 0;
 
         $elapsed_interval = $carbon_time_end->diff($carbon_time_start);
@@ -176,8 +176,11 @@ class OrderB2CController extends Controller
         }
 
         // Currency Formatting
-        $paket_cost = 239000; //8 Jam
-        $order_b2c->service_type_id == 1 ? $paket_cost = 289000 : $paket_cost = 185000; // 4 Jam
+        $order_b2c->service_type_id == 1 ?
+            $paket_cost = 299000 : // 12 Jam
+            ($order_b2c->service_type_id == 2 ?
+                $paket_cost = 185000 : //4 Jam
+                $paket_cost = 249000); //8 Jam;
 
         // Insurance
         $insurance_cost = $order_b2c->insurance * 25000;
