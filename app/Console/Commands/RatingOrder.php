@@ -66,7 +66,7 @@ class RatingOrder extends Command
                         [
                             "key"=> "1",
                             "value"=> "link",
-                            "value_text"=> "https://operdriverstaging.oper.co.id/rating/" . $link
+                            "value_text"=> "https://driver.oper.co.id/rating/" . $link
                         ]
                     ]
                 );

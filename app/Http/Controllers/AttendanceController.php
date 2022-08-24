@@ -104,7 +104,7 @@ class AttendanceController extends Controller
             throw new ApplicationException("attendance.failure_clockin");
         }
 
-        if($checkAttendance->count() > 0){
+        if($checkAttendance->count() > 0 && $identerprise != env("B2C_IDENTERPRISE")){
             throw new ApplicationException("attendance.failure_already_clockin");
         }else{
 
@@ -153,7 +153,7 @@ class AttendanceController extends Controller
                     $insuranceOrderB2C = [
                         "trx_id" => $order_ot->trx_id,
                         "task_template_id" => $order_ot->task_template_task_template_id,
-                        "booking_start" => $order_ot->booking_time,
+                        "booking_start" => Carbon::now()->format('Y-m-d H:i'),
                         "driver_name" => $order_ot->driver->user->name,
                         "client_vehicle_license" => $order_ot->client_vehicle_license,
                         "user_fullname" => $order_ot->user_fullname,
@@ -283,6 +283,21 @@ class AttendanceController extends Controller
                             'time_end' => Carbon::now()->format('Y-m-d H:i'),
                         ]);
 
+                    // Get OT Order
+                    $order_ot = Order::where('idorder', $order_b2c->oper_task_order_id)
+                        ->with(['driver', 'vehicle_branch'])
+                        ->first();
+
+                    // Finish insurance order params
+                    $finishParams = [
+                        "trx_id" => $order_ot->trx_id,
+                        "booking_end" => Carbon::now()->format('Y-m-d H:i')
+                    ];
+
+                    // Submit Insurance
+                    $polisHandler = new PolisHandler();
+                    $polisHandler->finishOrderB2C($finishParams);
+
                     $customer_id = $order_b2c->customer_id;
                     $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
                     $qontakHandler = new QontakHandler();
@@ -294,12 +309,12 @@ class AttendanceController extends Controller
                             [
                                 "key"=> "1",
                                 "value"=> "rekening",
-                                "value_text"=> "Rekening BCA PT. Online Helper Internasional : 889112381239"
+                                "value_text"=> "Rekening BCA PT. Online Helper Internasional : 2916886788"
                             ],
                             [
                                 "key"=> "2",
                                 "value"=> "link",
-                                "value_text"=> "https://operdriverstaging.oper.co.id/invoice/" . $request_link
+                                "value_text"=> "https://driver.oper.co.id/invoice/" . $request_link
                             ],
                         ]
                     );

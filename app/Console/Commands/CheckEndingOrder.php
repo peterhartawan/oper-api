@@ -43,11 +43,12 @@ class CheckEndingOrder extends Command
      */
     public function handle()
     {
+        // Log::info("CHECK ENDING ORDER CALLED");
         $orders = OrderB2C::whereNotNull('time_start')
             ->whereNull('time_end')
             ->select(
                 // 'orders.time_start',
-                DB::Raw("@estend:=(IF(service_type_id = 0, DATE_ADD(time_start, INTERVAL 540 MINUTE),
+                DB::Raw("@estend:=(IF(service_type_id = 0, DATE_ADD(time_start, INTERVAL 480 MINUTE),
                   IF(service_type_id = 1,
                    DATE_ADD(time_start, INTERVAL 720 MINUTE),
                    DATE_ADD(time_start, INTERVAL 240 MINUTE)
@@ -55,7 +56,7 @@ class CheckEndingOrder extends Command
                  )) as est_end"),
                 DB::Raw("@timenow:=(NOW()) as time_now"),
                 DB::Raw("TIMESTAMPDIFF(MINUTE, @timenow, @estend) as time_diff"),
-                DB::Raw("IF(service_type_id = 0, '9 Jam',
+                DB::Raw("IF(service_type_id = 0, '8 Jam',
                  IF(service_type_id = 1,
                   '12 Jam',
                   '4 Jam'
@@ -70,10 +71,11 @@ class CheckEndingOrder extends Command
 
         foreach($orders as $order){
             // Reminder ending
+            // Log::info("Order dengan ID " . $order->id . " diff : " . $order->time_diff);
             if($order->time_diff == 29){
                 // Log::info("Order dengan ID " . $order->id . " 30 min, tembak WA");
                 $phone = $order->customer->phone;
-                $paket = 9;
+                $paket = 8;
                 $order->service_type_id == 1 ? $paket = 12 : $paket = 4;
                 $qontakHandler->sendMessage(
                     "62".$phone,
@@ -93,7 +95,7 @@ class CheckEndingOrder extends Command
                 // Log::info("Order dengan ID " . $order->id . " masuk OVERTIME, tembak WA");
                 $fullname = $order->customer->fullname;
                 $phone = $order->customer->phone;
-                $paket = 9;
+                $paket = 8;
                 $order->service_type_id == 1 ? $paket = 12 : $paket = 4;
                 $qontakHandler->sendMessage(
                     "62".$phone,

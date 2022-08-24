@@ -1084,7 +1084,7 @@ class OrderController extends Controller
                 // Blast WA
                 $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)->first();
                 $customer_id = $orderb2c->customer_id;
-                $link = "https://operdriverstaging.oper.co.id/dashboard/" . $orderb2c->link;
+                $link = "https://driver.oper.co.id/dashboard/" . $orderb2c->link;
                 $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
                 $qontakHandler = new QontakHandler();
                 $qontakHandler->sendMessage(
@@ -2438,9 +2438,18 @@ class OrderController extends Controller
         // $dates = Order::all()->pluck('booking_time');
         $dates = Order::selectRaw('booking_time, @booking_date:=(DATE(booking_time)) as booking_date, COUNT(@booking_date) as booking_date_count')
             ->whereDate('booking_time', '>=', Carbon::now())
+            ->where('client_enterprise_identerprise', env("B2C_IDENTERPRISE"))
             ->groupBy('booking_date')
             ->orderBy('booking_date', 'desc')
             ->get();
+
+        if(count($dates) === 0){
+            $dateArray = [
+                "unavailable_dates" => [],
+                "nearest_date" => Carbon::today()->format("Y-m-d"),
+            ];
+            return Response::success($dateArray);
+        }
 
         // Nearest date
         $latestDate = Carbon::parse($dates->first()->booking_date);
@@ -2448,7 +2457,7 @@ class OrderController extends Controller
         $dayDiff = $latestDate->diffInDays($todayDate);
 
         // Change the date count (at this moment 1) to 10 later on after demo
-        $dates = $dates->where('booking_date_count', 1)->pluck('booking_date');
+        $dates = $dates->where('booking_date_count', '>=', 1)->pluck('booking_date');
 
         $days = [];
 
