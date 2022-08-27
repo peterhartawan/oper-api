@@ -116,6 +116,7 @@ class Constant
     const QONTAK_TEMPLATE_ID_ORDER_CREATED = "2c5869d1-4bb1-4d0e-aef2-f438ae09cd5e";
     const QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN = "306a22f8-60fb-4e89-b257-1b608d25e6dc";
     const QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED = "ba4a4fdc-d395-4fcf-b299-9d2a4c8d0db6";
+    const QONTAK_TEMPLATE_DRIVER_START_TRACKING = "9aa2e6fd-2642-4ebb-acc8-80a754555c8c";
     const QONTAK_TEMPLATE_ORDER_BEGAN = "c6d23007-4e95-4277-9868-aa8aaee0d95f";
     const QONTAK_TEMPLATE_REMINDER_30MIN = "bbf3d465-ae45-4c98-b17c-b41fc2ef5988";
     const QONTAK_TEMPLATE_REMINDER_OVERTIME = "35ba8ba1-c1e0-45ac-a27a-379c0b9f66a2";
@@ -123,6 +124,7 @@ class Constant
     const QONTAK_TEMPLATE_VERIFIED = "84434d83-1107-4a2a-9f66-deda164d7839";
     const QONTAK_TEMPLATE_RATING = "55d79506-0106-4920-9e3d-81448ca5bfa1";
     const QONTAK_TEMPLATE_FIRST_PROMO = "5e029760-31ab-4228-a50a-adb5ef609c79";
+    const QONTAK_TEMPLATE_TOMORROW_REMINDER = "60943422-15bb-486f-b476-cb8a1f8d560f";
 
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');

@@ -34,6 +34,7 @@ class Kernel extends ConsoleKernel
         // })->everyMinute()->runInBackground();
         $schedule->command('order:ce')->everyMinute()->runInBackground();
         $schedule->command('order:rating')->everyMinute()->runInBackground();
+        $schedule->command('order:cft')->dailyAt('15:28')->runInBackground();
     }
 
     /**

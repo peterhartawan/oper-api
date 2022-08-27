@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Constants\Constant;
 use App\Exceptions\ApplicationException;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
@@ -9,6 +10,7 @@ use App\Models\B2C\OrderB2C;
 use App\Models\B2C\RatingB2C;
 use App\Models\Order;
 use App\Models\VehicleBrand;
+use App\Services\QontakHandler;
 use DB;
 use App\Services\Response;
 use App\Services\Validate;
@@ -214,6 +216,29 @@ class OrderB2CController extends Controller
         $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_insurance_cost, $formatted_overtime_cost, $formatted_overall_cost, $formatted_kupon_cost);
 
         return Response::success($mail);
+    }
+
+    public function beginTracking(Request $request){
+        Validate::request($request->all(), [
+            'id'  => 'required|int'
+        ]);
+
+        $customerPhone = Order::where('idorder', $request->id)
+            ->first()->user_phonenumber;
+
+        if(empty($customerPhone)){
+            throw new ApplicationException('orders.not_found');
+        }
+
+        $qontakHandler = new QontakHandler();
+        $qontakHandler->sendMessage(
+            "62".$customerPhone,
+            "Driver Start Tracking",
+            Constant::QONTAK_TEMPLATE_DRIVER_START_TRACKING,
+            []
+        );
+
+        return Response::success();
     }
 }
 

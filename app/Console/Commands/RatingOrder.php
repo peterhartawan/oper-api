@@ -6,8 +6,7 @@ use App\Constants\Constant;
 use App\Models\B2C\OrderB2C;
 use App\Services\QontakHandler;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use DB;
 
 class RatingOrder extends Command
 {

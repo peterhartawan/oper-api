@@ -303,7 +303,7 @@ class AttendanceController extends Controller
                     $qontakHandler = new QontakHandler();
                     $qontakHandler->sendMessage(
                         "62".$phone,
-                        "Order Began",
+                        "Order Ended",
                         Constant::QONTAK_TEMPLATE_PAYMENT,
                         [
                             [
