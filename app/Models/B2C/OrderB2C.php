@@ -36,7 +36,7 @@ class OrderB2C extends Model
 
     public function rating()
     {
-        return $this->hasOne(\App\Models\B2C\RatingB2C::class, 'b2c_order_id', 'id');
+        return $this->hasOne(\App\Models\B2C\RatingB2C::class, 'b2c_order_id', 'oper_task_order_id');
     }
 
     public function kupon()

@@ -167,7 +167,7 @@ class RoleAccess
         "RoleController" => ["access"],
         "TaskTemplateController" => ["index", "show"],
         "OrderController" => ["index", "history", "history_detail", "task", "skip_task", "show"],
-        "OrderB2CController" => ["beginTracking"],
+        "OrderB2CController" => ["beginTracking", "arrived"],
         "FaqController" => ["index"],
         "TrackingController" => ["store"],
         "MobileNotificationController" => "all",

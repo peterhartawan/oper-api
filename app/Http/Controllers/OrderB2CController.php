@@ -131,7 +131,15 @@ class OrderB2CController extends Controller
         }
     }
 
-    public function getInvoiceData($link){
+    public function getInvoiceData(Request $request){
+        Validate::request($request->all(), [
+            'phone' => 'required',
+            'link'  => 'required'
+        ]);
+
+        $phone = $request->phone;
+        $link = $request->link;
+
         // Read data
         $order_b2c = OrderB2C::where('link', $link)
             ->where('status', '>=', 3)
@@ -139,7 +147,7 @@ class OrderB2CController extends Controller
             ->with(['customer', 'kupon'])
             ->first();
 
-        if(empty($order_b2c)){
+        if(empty($order_b2c) || $order_b2c->customer->phone != $phone){
             throw new ApplicationException('orders.not_found');
         }
 
@@ -235,6 +243,29 @@ class OrderB2CController extends Controller
             "62".$customerPhone,
             "Driver Start Tracking",
             Constant::QONTAK_TEMPLATE_DRIVER_START_TRACKING,
+            []
+        );
+
+        return Response::success();
+    }
+
+    public function arrived(Request $request){
+        Validate::request($request->all(), [
+            'id'  => 'required|int'
+        ]);
+
+        $customerPhone = Order::where('idorder', $request->id)
+            ->first()->user_phonenumber;
+
+        if(empty($customerPhone)){
+            throw new ApplicationException('orders.not_found');
+        }
+
+        $qontakHandler = new QontakHandler();
+        $qontakHandler->sendMessage(
+            "62".$customerPhone,
+            "Driver Arrived",
+            Constant::QONTAK_TEMPLATE_DRIVER_ARRIVED,
             []
         );
 
