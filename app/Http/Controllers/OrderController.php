@@ -2699,9 +2699,25 @@ class OrderController extends Controller
             ->get();
 
         if(count($dates) === 0){
+            $arr = [];
+
+            $now = Carbon::now();
+
+            // Today's order time limit
+            $curDateFourPM = Carbon::today()->addHours(16);
+            if($now->gt($curDateFourPM)){
+                array_push($arr, $now->format('Y-m-d'));
+            }
+            // Tomorrow's order time limit
+            $curDateNinePM = Carbon::today()->addHours(21);
+            if($now->gt($curDateNinePM)){
+                array_push($arr, $now->addDays(1)->format('Y-m-d'));
+            }
+
             $dateArray = [
-                "unavailable_dates" => [],
+                "unavailable_dates" => $arr,
                 "nearest_date" => Carbon::today()->format("Y-m-d"),
+                "type" => 1
             ];
             return Response::success($dateArray);
         }
@@ -2712,7 +2728,22 @@ class OrderController extends Controller
         $dayDiff = $latestDate->diffInDays($todayDate);
 
         // Change the date count (at this moment 1) to 10 later on after demo
-        $dates = $dates->where('booking_date_count', '>=', 10)->pluck('booking_date');
+        $dates = $dates->where('booking_date_count', '>=', 10)->pluck('booking_date')->toArray();
+
+        // Check if today is out of operational time, then add tomorrow's date to unavailable dates if so
+        // 9 PM of currentDate
+        $now = Carbon::now();
+
+        // Today's order time limit
+        $curDateFourPM = Carbon::today()->addHours(16);
+        if($now->gt($curDateFourPM)){
+            array_push($dates, $now->format('Y-m-d'));
+        }
+        // Tomorrow's order time limit
+        $curDateNinePM = Carbon::today()->addHours(21);
+        if($now->gt($curDateNinePM)){
+            array_push($dates, $now->addDays(1)->format('Y-m-d'));
+        }
 
         $days = [];
 
@@ -2733,6 +2764,7 @@ class OrderController extends Controller
         $dateArray = [
             "unavailable_dates" => $dates,
             "nearest_date" => $nearestDate,
+            "type" => 2
         ];
 
         return Response::success($dateArray);
