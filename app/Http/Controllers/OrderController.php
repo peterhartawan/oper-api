@@ -369,9 +369,9 @@ class OrderController extends Controller
 
                 OrderB2C::create($order_b2c_data);
 
-                if($kupon_id != null) {
-                    Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
-                }
+                // if($kupon_id != null) {
+                //     Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
+                // }
 
                 // BLAST
 
@@ -2437,6 +2437,12 @@ class OrderController extends Controller
                         ]);
 
                         $order_b2c = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder)->first();
+
+                        $kupon_id = $order_b2c->kupon_id;
+                        if($kupon_id != null) {
+                            Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
+                        }
+
                         $customer_id = $order_b2c->customer_id;
                         $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
                         $qontakHandler = new QontakHandler();
