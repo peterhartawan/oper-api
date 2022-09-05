@@ -392,7 +392,7 @@ class OrderController extends Controller
 
                 $vehicleBrandName = VehicleBrand::where('id', $request->vehicle_brand_id)->first()->brand_name;
 
-                $paketText = "9 Jam";
+                $paketText = "8 Jam";
                 if($service_type_id == 1)
                     $paketText = "12 Jam";
                 if($service_type_id == 2)
@@ -572,7 +572,7 @@ class OrderController extends Controller
                         [
                             "key"=> "14",
                             "value"=> "asuransi",
-                            "value_text"=> $asuransiText
+                            "value_text"=> "Ya"
                         ],
                         [
                             "key"=> "15",
@@ -656,7 +656,7 @@ class OrderController extends Controller
                         [
                             "key"=> "14",
                             "value"=> "asuransi",
-                            "value_text"=> $asuransiText
+                            "value_text"=> "Ya"
                         ],
                         [
                             "key"=> "15",
@@ -740,7 +740,7 @@ class OrderController extends Controller
                         [
                             "key"=> "14",
                             "value"=> "asuransi",
-                            "value_text"=> $asuransiText
+                            "value_text"=> "Ya"
                         ],
                         [
                             "key"=> "15",
@@ -824,7 +824,7 @@ class OrderController extends Controller
                         [
                             "key"=> "14",
                             "value"=> "asuransi",
-                            "value_text"=> $asuransiText
+                            "value_text"=> "Ya"
                         ],
                         [
                             "key"=> "15",
