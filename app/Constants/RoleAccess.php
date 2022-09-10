@@ -171,7 +171,8 @@ class RoleAccess
         "FaqController" => ["index"],
         "TrackingController" => ["store"],
         "MobileNotificationController" => "all",
-        "MobileCheckUpdateController" => "all"
+        "MobileCheckUpdateController" => "all",
+        "PolisController" => "all"
     ];
 
     const EMPLOYEE = [

@@ -309,6 +309,12 @@ Route::group([
         Route::post('/claim', 'KuponController@claim');
     });
 
+    Route::group([
+        'prefix' => 'polis'
+    ], function() {
+        Route::post('/submit-b2b', 'PolisController@submitPolisB2B');
+    });
+
     Route::apiResources([
         'user'              => 'UserController',
         'enterprise'        => 'ClientEnterpriseController',

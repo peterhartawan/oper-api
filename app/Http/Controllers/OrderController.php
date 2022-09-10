@@ -44,6 +44,7 @@ use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
 use App\Models\Vehicles;
+use App\Services\PolisHandler;
 use App\Services\QontakHandler;
 
 class OrderController extends Controller
@@ -1076,6 +1077,7 @@ class OrderController extends Controller
             'updated_by'    => $request->user()->id
         ]);
 
+        // B2C
         if($identerprise == env('B2C_IDENTERPRISE')){
             $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
 
@@ -2262,6 +2264,17 @@ class OrderController extends Controller
 
         $detail_order = $order->first();
 
+        $no = 1;
+        array_walk($detail_order->order_tasks, function (&$v, $k) use ($no) {
+            foreach ($v as $item) {
+                $item->no = $no;
+                if (!empty($item->attachment_url)) {
+                    $item->attachment_url = env('BASE_API') . Storage::url($item->attachment_url);
+                }
+            }
+            $no++;
+        });
+
         if (Constant::ORDER_OPEN != $detail_order->order_status) {
             if (!empty($detail_order->driver->user->profile_picture)) {
                 $pertama = Storage::url($detail_order->driver->user->profile_picture);
@@ -2429,6 +2442,7 @@ class OrderController extends Controller
                         ->where('idordertask', $id_nexttask)
                         ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
 
+                    // B2C
                     if($identerprise == env('B2C_IDENTERPRISE')){
                         $b2c_order = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder);
 
@@ -2452,6 +2466,19 @@ class OrderController extends Controller
                             Constant::QONTAK_TEMPLATE_VERIFIED,
                             []
                         );
+                    }
+
+                    // Arista
+                    if($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE')){
+                        // Finish insurance order params
+                        $finishParams = [
+                            "trx_id" => $detail_order->trx_id,
+                            "booking_end" => Carbon::now()->format('Y-m-d H:i')
+                        ];
+
+                        // Submit Insurance
+                        $polisHandler = new PolisHandler();
+                        $polisHandler->finishOrderUAT($finishParams);
                     }
 
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');

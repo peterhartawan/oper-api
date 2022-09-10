@@ -296,7 +296,7 @@ class AttendanceController extends Controller
 
                     // Submit Insurance
                     $polisHandler = new PolisHandler();
-                    $polisHandler->finishOrderB2C($finishParams);
+                    $polisHandler->finishOrder($finishParams);
 
                     $customer_id = $order_b2c->customer_id;
                     $phone = CustomerB2C::where('id', $customer_id)->first()->phone;

@@ -182,6 +182,18 @@ class UserController extends Controller
             } else {
                 $detail_user->is_b2c = false;
             }
+
+            if($detail_user->client_enterprise_identerprise == env('OP_IDENTERPRISE')){
+                $detail_user->is_op = true;
+            } else {
+                $detail_user->is_op = false;
+            }
+
+            if($detail_user->client_enterprise_identerprise == env('ARISTA_IDENTERPRISE')){
+                $detail_user->is_arista = true;
+            } else {
+                $detail_user->is_arista = false;
+            }
         }
         elseif (in_array($role_login, $employeeRole)) {
             //query employee
