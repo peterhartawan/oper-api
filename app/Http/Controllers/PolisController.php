@@ -47,7 +47,7 @@ class PolisController extends Controller{
 
         // Submit Insurance
         $polisHandler = new PolisHandler();
-        $insuranceResponse = $polisHandler->submitOrderB2BUAT($insuranceOrder);
+        $insuranceResponse = $polisHandler->submitOrderB2B($insuranceOrder);
 
         // Insurance Submitted
         if($insuranceResponse->status == "200"){

@@ -2231,7 +2231,7 @@ class OrderController extends Controller
     public function showByTrxId($trxId)
     {
         $user = auth()->guard('api')->user();
-        $order = Order::with(["order_tasks"])->where('trx_id', $trxId);
+        $order = Order::with(["order_tasks", "vehicle_branch"])->where('trx_id', $trxId);
 
         switch ($user->idrole) {
 
@@ -2375,6 +2375,100 @@ class OrderController extends Controller
                     $OrderTasks->attachment_url = Storage::url($OrderTasks->attachment_url);
                 }
 
+                // Otopickup
+                if($identerprise == env('OP_IDENTERPRISE')){
+                    $qontakHandler = new QontakHandler();
+
+                    switch($OrderTasks->sequence){
+                        case Constant::OP_PICKUP_SEQUENCE:
+                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+
+                            $qontakHandler->sendMessage(
+                                "628121816441",
+                                "Wahid OPER",
+                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                                [
+                                    [
+                                        "key"=> "1",
+                                        "value"=> "id",
+                                        "value_text"=> $trx_id
+                                    ],
+                                    [
+                                        "key"=> "2",
+                                        "value"=> "link",
+                                        "value_text"=> "https://otopickup.oper.co.id/status/pickup/" . $trx_id
+                                    ],
+                                ]);
+
+                            break;
+
+                        case Constant::OP_CONSULT_SEQUENCE:
+                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+
+                            $qontakHandler->sendMessage(
+                                "628121816441",
+                                "Wahid OPER",
+                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                                [
+                                    [
+                                        "key"=> "1",
+                                        "value"=> "id",
+                                        "value_text"=> $trx_id
+                                    ],
+                                    [
+                                        "key"=> "2",
+                                        "value"=> "link",
+                                        "value_text"=> "https://otopickup.oper.co.id/status/consult/" . $trx_id
+                                    ],
+                                ]);
+
+                            break;
+
+                        case Constant::OP_SERVICE_SEQUENCE:
+                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+
+                            $qontakHandler->sendMessage(
+                                "628121816441",
+                                "Wahid OPER",
+                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                                [
+                                    [
+                                        "key"=> "1",
+                                        "value"=> "id",
+                                        "value_text"=> $trx_id
+                                    ],
+                                    [
+                                        "key"=> "2",
+                                        "value"=> "link",
+                                        "value_text"=> "https://otopickup.oper.co.id/status/service/" . $trx_id
+                                    ],
+                                ]);
+
+                            break;
+                        case Constant::OP_DROPOFF_SEQUENCE:
+                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+
+                            $qontakHandler->sendMessage(
+                                "628121816441",
+                                "Wahid OPER",
+                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                                [
+                                    [
+                                        "key"=> "1",
+                                        "value"=> "id",
+                                        "value_text"=> $trx_id
+                                    ],
+                                    [
+                                        "key"=> "2",
+                                        "value"=> "link",
+                                        "value_text"=> "https://otopickup.oper.co.id/status/dropoff/" . $trx_id
+                                    ],
+                                ]);
+
+                            break;
+                    }
+                }
+
                 //cek status all task
                 $check_allstatus = $this->check_allstatustask($OrderTasks->order_idorder, $identerprise);
                 if ($check_allstatus == true) {
@@ -2478,7 +2572,7 @@ class OrderController extends Controller
 
                         // Submit Insurance
                         $polisHandler = new PolisHandler();
-                        $polisHandler->finishOrderUAT($finishParams);
+                        $polisHandler->finishOrder($finishParams);
                     }
 
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');

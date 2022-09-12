@@ -126,6 +126,18 @@ class Constant
     const QONTAK_TEMPLATE_RATING = "55d79506-0106-4920-9e3d-81448ca5bfa1";
     const QONTAK_TEMPLATE_FIRST_PROMO = "5e029760-31ab-4228-a50a-adb5ef609c79";
     const QONTAK_TEMPLATE_TOMORROW_REMINDER = "60943422-15bb-486f-b476-cb8a1f8d560f";
+    const QONTAK_TEMPLATE_OTOPICKUP_UPDATE = "63282c9b-de85-47ca-8ca0-09a2ca9e4f51";
+
+    #OTOPICKUP STATES
+    const OP_PICKUP_SEQUENCE = 1;
+    const OP_CONSULT_SEQUENCE = 17;
+    const OP_SERVICE_SEQUENCE = 18;
+    const OP_DROPOFF_SEQUENCE = 31;
+
+    // const OP_PICKUP_SEQUENCE = "1";
+    // const OP_CONSULT_SEQUENCE = "2";
+    // const OP_SERVICE_SEQUENCE = "3";
+    // const OP_DROPOFF_SEQUENCE = "4";
 
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');
