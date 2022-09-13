@@ -315,6 +315,12 @@ Route::group([
         Route::post('/submit-b2b', 'PolisController@submitPolisB2B');
     });
 
+    Route::group([
+        'prefix' => 'otopickup'
+    ], function() {
+        Route::get('/tracking/{trx_id}', 'OtopickupController@tracking');
+    });
+
     Route::apiResources([
         'user'              => 'UserController',
         'enterprise'        => 'ClientEnterpriseController',

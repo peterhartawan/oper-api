@@ -142,7 +142,8 @@ class RoleAccess
         "RatingB2CController" => ["store", "getRatingByDriverId", "getRatingByLink"],
         "OTPB2CController" => ["store", "verify", "isPhoneSucceedOTP"],
         "CustomerB2CController" => ["getCustomerByPhone"],
-        "KuponController" => ["claim", "getKuponByCustomerId", "getKuponById"]
+        "KuponController" => ["claim", "getKuponByCustomerId", "getKuponById"],
+        "OtopickupController" => ["tracking"],
     ];
 
     const DISPATCHER_ONDEMAND = [

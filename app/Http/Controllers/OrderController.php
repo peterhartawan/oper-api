@@ -2396,76 +2396,76 @@ class OrderController extends Controller
                                     [
                                         "key"=> "2",
                                         "value"=> "link",
-                                        "value_text"=> "https://otopickup.oper.co.id/status/pickup/" . $trx_id
+                                        "value_text"=> "https://otopickup.oper.co.id/tracking/" . $trx_id
                                     ],
                                 ]);
 
                             break;
 
-                        case Constant::OP_CONSULT_SEQUENCE:
-                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                        // case Constant::OP_CONSULT_SEQUENCE:
+                        //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
-                            $qontakHandler->sendMessage(
-                                "628121816441",
-                                "Wahid OPER",
-                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                                [
-                                    [
-                                        "key"=> "1",
-                                        "value"=> "id",
-                                        "value_text"=> $trx_id
-                                    ],
-                                    [
-                                        "key"=> "2",
-                                        "value"=> "link",
-                                        "value_text"=> "https://otopickup.oper.co.id/status/consult/" . $trx_id
-                                    ],
-                                ]);
+                        //     $qontakHandler->sendMessage(
+                        //         "628121816441",
+                        //         "Wahid OPER",
+                        //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                        //         [
+                        //             [
+                        //                 "key"=> "1",
+                        //                 "value"=> "id",
+                        //                 "value_text"=> $trx_id
+                        //             ],
+                        //             [
+                        //                 "key"=> "2",
+                        //                 "value"=> "link",
+                        //                 "value_text"=> "https://otopickup.oper.co.id/status/consult/" . $trx_id
+                        //             ],
+                        //         ]);
 
-                            break;
+                        //     break;
 
-                        case Constant::OP_SERVICE_SEQUENCE:
-                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                        // case Constant::OP_SERVICE_SEQUENCE:
+                        //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
-                            $qontakHandler->sendMessage(
-                                "628121816441",
-                                "Wahid OPER",
-                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                                [
-                                    [
-                                        "key"=> "1",
-                                        "value"=> "id",
-                                        "value_text"=> $trx_id
-                                    ],
-                                    [
-                                        "key"=> "2",
-                                        "value"=> "link",
-                                        "value_text"=> "https://otopickup.oper.co.id/status/service/" . $trx_id
-                                    ],
-                                ]);
+                        //     $qontakHandler->sendMessage(
+                        //         "628121816441",
+                        //         "Wahid OPER",
+                        //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                        //         [
+                        //             [
+                        //                 "key"=> "1",
+                        //                 "value"=> "id",
+                        //                 "value_text"=> $trx_id
+                        //             ],
+                        //             [
+                        //                 "key"=> "2",
+                        //                 "value"=> "link",
+                        //                 "value_text"=> "https://otopickup.oper.co.id/status/service/" . $trx_id
+                        //             ],
+                        //         ]);
 
-                            break;
-                        case Constant::OP_DROPOFF_SEQUENCE:
-                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                        //     break;
+                        // case Constant::OP_DROPOFF_SEQUENCE:
+                        //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
-                            $qontakHandler->sendMessage(
-                                "628121816441",
-                                "Wahid OPER",
-                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                                [
-                                    [
-                                        "key"=> "1",
-                                        "value"=> "id",
-                                        "value_text"=> $trx_id
-                                    ],
-                                    [
-                                        "key"=> "2",
-                                        "value"=> "link",
-                                        "value_text"=> "https://otopickup.oper.co.id/status/dropoff/" . $trx_id
-                                    ],
-                                ]);
+                        //     $qontakHandler->sendMessage(
+                        //         "628121816441",
+                        //         "Wahid OPER",
+                        //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                        //         [
+                        //             [
+                        //                 "key"=> "1",
+                        //                 "value"=> "id",
+                        //                 "value_text"=> $trx_id
+                        //             ],
+                        //             [
+                        //                 "key"=> "2",
+                        //                 "value"=> "link",
+                        //                 "value_text"=> "https://otopickup.oper.co.id/status/dropoff/" . $trx_id
+                        //             ],
+                        //         ]);
 
-                            break;
+                        //     break;
                     }
                 }
 

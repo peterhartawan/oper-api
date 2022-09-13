@@ -128,16 +128,18 @@ class Constant
     const QONTAK_TEMPLATE_TOMORROW_REMINDER = "60943422-15bb-486f-b476-cb8a1f8d560f";
     const QONTAK_TEMPLATE_OTOPICKUP_UPDATE = "63282c9b-de85-47ca-8ca0-09a2ca9e4f51";
 
-    #OTOPICKUP STATES
+    #OTOPICKUP SEQUENCES
     const OP_PICKUP_SEQUENCE = 1;
     const OP_CONSULT_SEQUENCE = 17;
     const OP_SERVICE_SEQUENCE = 18;
     const OP_DROPOFF_SEQUENCE = 31;
 
-    // const OP_PICKUP_SEQUENCE = "1";
-    // const OP_CONSULT_SEQUENCE = "2";
-    // const OP_SERVICE_SEQUENCE = "3";
-    // const OP_DROPOFF_SEQUENCE = "4";
+    #OTOPICKUP STATES
+    const OP_STATE_PICKUP = 1;
+    const OP_STATE_CONSULT = 2;
+    const OP_STATE_SERVICE = 3;
+    const OP_STATE_DROPOFF = 4;
+    const OP_STATE_FINISH = 5;
 
     static function getConstants() {
         $oClass = new \ReflectionClass('\\App\\Constants\\Constant');
