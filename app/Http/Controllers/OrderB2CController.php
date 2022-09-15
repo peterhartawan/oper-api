@@ -52,7 +52,53 @@ class OrderB2CController extends Controller
         return Response::success($latestOrderB2C);
     }
 
-    public function getFormData($phone){
+    public function getFormDataByLink($link){
+        $latestOrderB2C = OrderB2C::latest('id')
+            ->where('link', $link)
+            ->first();
+
+        if(empty($latestOrderB2C))
+            throw new ApplicationException("orders.not_found");
+
+        $latestOrderOT = Order::on('mysql')
+            ->where('idorder', $latestOrderB2C->oper_task_order_id)
+            ->first();
+
+        if(empty($latestOrderOT))
+            throw new ApplicationException("orders.not_found");
+
+        $vehicleBrandName = VehicleBrand::where('id', $latestOrderOT->vehicle_brand_id)->first()->brand_name;
+
+        $kupon = null;
+        if($latestOrderB2C->kupon_id != null){
+            $kupon = Kupon::where('id', $latestOrderB2C->kupon_id)
+                ->with(['promo'])
+                ->first();
+        }
+
+        $latestOrder = [
+            'insurance' => $latestOrderB2C->insurance,
+            'local_city' => $latestOrderB2C->local_city,
+            'notes' => $latestOrderB2C->notes,
+            'service_type_id' => $latestOrderB2C->service_type_id,
+            'stay' => $latestOrderB2C->stay,
+            'vehicle_brand_id' => $latestOrderOT->vehicle_brand_id,
+            'vehicle_brand' => $vehicleBrandName,
+            'vehicle_type' => $latestOrderOT->vehicle_type,
+            'vehicle_year' => $latestOrderOT->vehicle_year,
+            'vehicle_transmission' => $latestOrderOT->vehicle_transmission,
+            'client_vehicle_license' => $latestOrderOT->client_vehicle_license,
+            'destination_name' => $latestOrderOT->destination_name,
+            'destination_latitude' => $latestOrderOT->destination_latitude,
+            'destination_longitude' => $latestOrderOT->destination_longitude,
+            'booking_time' => strval($latestOrderOT->booking_time),
+            'kupon' => $kupon
+        ];
+
+        return Response::success($latestOrder);
+    }
+
+    public function getFormDataByPhone($phone){
         $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
 
         if(empty($customer_id))

@@ -272,7 +272,9 @@ Route::group([
     ], function() {
         Route::get('/{link}', 'OrderB2CController@showByLink');
         Route::get('/latest/{phone}', 'OrderB2CController@getLatest');
-        Route::get('/form/{phone}', 'OrderB2CController@getFormData');
+        // Route::get('/form/{phone}', 'OrderB2CController@getFormData');
+        Route::get('/form/phone/{phone}', 'OrderB2CController@getFormDataByPhone');
+        Route::get('/form/link/{link}', 'OrderB2CController@getFormDataByLink');
         Route::post('/cancel', 'OrderB2CController@cancelOrder');
         Route::post('/invoice', 'OrderB2CController@getInvoiceData');
         Route::post('/begin-tracking', 'OrderB2CController@beginTracking');
