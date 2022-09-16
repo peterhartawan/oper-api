@@ -303,6 +303,12 @@ Route::group([
     });
 
     Route::group([
+        'prefix' => 'paket'
+    ], function() {
+        Route::get('/', 'PaketB2CController@index');
+    });
+
+    Route::group([
         'prefix' => 'customer-b2c'
     ], function() {
         Route::get('/{phone}', 'CustomerB2CController@getCustomerByPhone');

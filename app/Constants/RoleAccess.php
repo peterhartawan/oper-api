@@ -142,6 +142,7 @@ class RoleAccess
         "RatingB2CController" => ["store", "getRatingByDriverId", "getRatingByLink"],
         "OTPB2CController" => ["store", "verify", "isPhoneSucceedOTP"],
         "PricingB2CController" => ["index"],
+        "PaketB2CController" => ["index"],
         "CustomerB2CController" => ["getCustomerByPhone"],
         "KuponController" => ["claim", "getKuponByCustomerId", "getKuponById"],
         "OtopickupController" => ["tracking"],
