@@ -9,11 +9,17 @@ class Paket extends Model
     protected $connection = 'b2c';
     protected $table = 'paket';
     protected $primaryKey = 'id';
-	public $timestamps = false;
+    public $timestamps = false;
 
     protected $fillable = [
         'pricing_id',
         'deskripsi_text',
         'deskripsi_list'
     ];
+
+    public function pricing()
+    {
+        return $this->hasOne(\App\Models\B2C\Pricing::class,
+        'id', 'pricing_id');
+    }
 }
