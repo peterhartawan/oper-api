@@ -211,9 +211,7 @@ class OrderB2CController extends Controller
         $carbon_time_end = Carbon::parse($order_b2c->time_end);
 
         $jam_paket = ($order_b2c->service_type_id == 0 ? 8 : ($order_b2c->service_type_id == 1 ? 12 : 4));
-        // dd($jam_paket);
         $carbon_paket_end = Carbon::parse($order_b2c->time_start)->addHours($jam_paket);
-        // dd($carbon_paket_end);
 
         $overtime = $carbon_paket_end->diffInHours($carbon_time_end, false) + 1;
         if($carbon_time_end->lt($carbon_paket_end))
@@ -238,23 +236,29 @@ class OrderB2CController extends Controller
                 $paket_cost = 185000 : //4 Jam
                 $paket_cost = 249000); //8 Jam;
 
-        // Insurance
-        $insurance_cost = $order_b2c->insurance * 25000;
+        // Luar Kota
+        $order_b2c->local_city == 1 ?
+            $intercity_cost = 0 :       //Dalam Kota
+            ($order_b2c->stay == 1 ?    //Luar Kota
+                $intercity_cost = 200000 :  // Menginap
+                $intercity_cost = 120000);  // PP
 
         // Overtime
         $overtime_cost = $overtime * 30000;
 
         // Kupon
-        $cost_no_kupon = $paket_cost + $insurance_cost + $overtime_cost;
-        $overall_cost = $order_b2c->kupon != null ? $cost_no_kupon - $order_b2c->kupon->promo->potongan_fixed : $cost_no_kupon;
+        $cost_no_kupon = $paket_cost + $intercity_cost + $overtime_cost;
+        $overall_cost = $order_b2c->kupon != null ?
+            $cost_no_kupon - $order_b2c->kupon->promo->potongan_fixed :
+            $cost_no_kupon;
 
         $formatted_paket_cost = number_format($paket_cost, 0, ",", ".");
 
-        $formatted_kupon_cost = $order_b2c->kupon != null ? number_format($order_b2c->kupon->promo->potongan_fixed) : "";
+        $formatted_intercity_cost = "";
+        if($order_b2c->local_city == 0)
+            $formatted_intercity_cost = number_format($intercity_cost, 0, ",", ".");
 
-        $formatted_insurance_cost = 0;
-        if($insurance_cost > 0)
-            $formatted_insurance_cost = number_format($insurance_cost, 0, ",", ".");
+        $formatted_kupon_cost = $order_b2c->kupon != null ? number_format($order_b2c->kupon->promo->potongan_fixed) : "";
 
         $formatted_overtime_cost = 0;
         if($overtime_cost > 0)
@@ -267,7 +271,7 @@ class OrderB2CController extends Controller
             $order_ot->profile_picture = env('BASE_API') . Storage::url($order_ot->driver->user->profile_picture);
         }
 
-        $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_insurance_cost, $formatted_overtime_cost, $formatted_overall_cost, $formatted_kupon_cost);
+        $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_intercity_cost, $formatted_overtime_cost, $formatted_overall_cost, $formatted_kupon_cost);
 
         return Response::success($mail);
     }
@@ -328,12 +332,12 @@ class MyMail {
     public $elapsed_time;
     public $rating;
     public $paket_cost;
-    public $insurance_cost;
+    public $intercity_cost;
     public $overtime_cost;
     public $overall_cost;
     public $kupon_cost;
 
-    public function __construct($order_ot, $order_b2c, $parsed_time_start, $parsed_time_end, $overtime, $elapsed_time, $rating, $paket_cost, $insurance_cost, $overtime_cost, $overall_cost, $kupon_cost)
+    public function __construct($order_ot, $order_b2c, $parsed_time_start, $parsed_time_end, $overtime, $elapsed_time, $rating, $paket_cost, $intercity_cost, $overtime_cost, $overall_cost, $kupon_cost)
     {
         $this->order_ot = $order_ot;
         $this->order_b2c = $order_b2c;
@@ -343,7 +347,7 @@ class MyMail {
         $this->elapsed_time = $elapsed_time;
         $this->rating = $rating;
         $this->paket_cost = $paket_cost;
-        $this->insurance_cost = $insurance_cost;
+        $this->intercity_cost = $intercity_cost;
         $this->overtime_cost = $overtime_cost;
         $this->overall_cost = $overall_cost;
         $this->kupon_cost = $kupon_cost;

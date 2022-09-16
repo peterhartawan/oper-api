@@ -416,16 +416,15 @@ class OrderController extends Controller
                     $luarKotaText = $luarKotaText . $stayText;
                 }
 
-                $asuransiText = "Tidak";
-                if($insurance == 1)
-                    $asuransiText = "Ya";
+                $deskripiText = $request->message ?
+                    str_replace("\n",". ","$request->message") :
+                    "Tidak ada catatan.";
 
-                /*
                 // Mas Obiq
                 $qontakHandler->sendMessage(
                     // override this number
                     "6287783109503",
-                    "Order Created",
+                    "Order Created - Mas Obiq",
                     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                     [
                         [
@@ -501,7 +500,7 @@ class OrderController extends Controller
                         [
                             "key"=> "15",
                             "value"=> "catatan",
-                            "value_text"=> $request->message ?? "Tidak ada catatan."
+                            "value_text"=> $deskripiText,
                         ],
                     ]
                 );
@@ -509,7 +508,7 @@ class OrderController extends Controller
                 $qontakHandler->sendMessage(
                     // override this number
                     "6285710664061",
-                    "Order Created",
+                    "Order Created - Mas Heri",
                     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                     [
                         [
@@ -585,7 +584,7 @@ class OrderController extends Controller
                         [
                             "key"=> "15",
                             "value"=> "catatan",
-                            "value_text"=> $request->message ?? "Tidak ada catatan."
+                            "value_text"=> $deskripiText,
                         ],
                     ]
                 );
@@ -593,7 +592,7 @@ class OrderController extends Controller
                 $qontakHandler->sendMessage(
                     // override this number
                     "628121816441",
-                    "Order Created",
+                    "Order Created - Mas Wahid",
                     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                     [
                         [
@@ -669,7 +668,7 @@ class OrderController extends Controller
                         [
                             "key"=> "15",
                             "value"=> "catatan",
-                            "value_text"=> $request->message ?? "Tidak ada catatan."
+                            "value_text"=> $deskripiText,
                         ],
                     ]
                 );
@@ -677,7 +676,7 @@ class OrderController extends Controller
                 $qontakHandler->sendMessage(
                     // override this number
                     "6287804085880",
-                    "Order Created",
+                    "Order Created - Admin",
                     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                     [
                         [
@@ -753,11 +752,11 @@ class OrderController extends Controller
                         [
                             "key"=> "15",
                             "value"=> "catatan",
-                            "value_text"=> $request->message ?? "Tidak ada catatan."
+                            "value_text"=> $deskripiText,
                         ],
                     ]
                 );
-                */
+
 
 
                 // return Response::success($qontakHandler);

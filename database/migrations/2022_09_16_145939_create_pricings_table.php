@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateCustomerB2CsTable extends Migration
+class CreatePricingsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -14,13 +14,10 @@ class CreateCustomerB2CsTable extends Migration
     public function up()
     {
         Schema::connection('b2c')
-            ->create('customers', function (Blueprint $table) {
+            ->create('pricing', function (Blueprint $table) {
                 $table->increments('id');
-                $table->string('phone', 15);
-                $table->string('email', 45);
-                $table->string('fullname', 45);
-                $table->int('gender', 1);
-                $table->timestamps();
+                $table->string('nama', 20);
+                $table->integer('harga', 11);
             });
     }
 
@@ -31,6 +28,6 @@ class CreateCustomerB2CsTable extends Migration
      */
     public function down()
     {
-        Schema::connection('b2c')->dropIfExists('customers');
+        Schema::connection('b2c')->dropIfExists('pricings');
     }
 }

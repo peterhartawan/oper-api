@@ -141,6 +141,7 @@ class RoleAccess
         "OrderB2CController" => ["showByLink", "getLatest", "getFormDataByLink", "getFormDataByPhone", "cancelOrder", "getInvoiceData"],
         "RatingB2CController" => ["store", "getRatingByDriverId", "getRatingByLink"],
         "OTPB2CController" => ["store", "verify", "isPhoneSucceedOTP"],
+        "PricingB2CController" => ["index"],
         "CustomerB2CController" => ["getCustomerByPhone"],
         "KuponController" => ["claim", "getKuponByCustomerId", "getKuponById"],
         "OtopickupController" => ["tracking"],
