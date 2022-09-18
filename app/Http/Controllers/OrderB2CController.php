@@ -29,7 +29,7 @@ class OrderB2CController extends Controller
     public function showByLink($link)
     {
         $order_b2c = OrderB2C::where('link', $link);
-        $detail = $order_b2c->with(['customer', 'kupon'])->first();
+        $detail = $order_b2c->with(['customer', 'paket', 'kupon'])->first();
         return Response::success($detail);
     }
 
@@ -55,6 +55,7 @@ class OrderB2CController extends Controller
     public function getFormDataByLink($link){
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('link', $link)
+            ->with(['customer', 'paket'])
             ->first();
 
         if(empty($latestOrderB2C))
@@ -77,6 +78,8 @@ class OrderB2CController extends Controller
         }
 
         $latestOrder = [
+            'customer' => $latestOrderB2C->customer,
+            'paket' => $latestOrderB2C->paket,
             'insurance' => $latestOrderB2C->insurance,
             'local_city' => $latestOrderB2C->local_city,
             'notes' => $latestOrderB2C->notes,
@@ -106,6 +109,7 @@ class OrderB2CController extends Controller
 
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('customer_id', $customer_id)
+            ->with(['paket'])
             ->first();
 
         if(empty($latestOrderB2C))
@@ -131,7 +135,7 @@ class OrderB2CController extends Controller
             'insurance' => $latestOrderB2C->insurance,
             'local_city' => $latestOrderB2C->local_city,
             'notes' => $latestOrderB2C->notes,
-            'service_type_id' => $latestOrderB2C->service_type_id,
+            'paket' => $latestOrderB2C->paket,
             'stay' => $latestOrderB2C->stay,
             'vehicle_brand_id' => $latestOrderOT->vehicle_brand_id,
             'vehicle_brand' => $vehicleBrandName,
@@ -190,7 +194,7 @@ class OrderB2CController extends Controller
         $order_b2c = OrderB2C::where('link', $link)
             ->where('status', '>=', 3)
             ->where('status', '!=', 6)
-            ->with(['customer', 'kupon'])
+            ->with(['customer', 'paket', 'kupon'])
             ->first();
 
         if(empty($order_b2c) || $order_b2c->customer->phone != $phone){
@@ -210,7 +214,7 @@ class OrderB2CController extends Controller
         $carbon_time_start = Carbon::parse($order_b2c->time_start);
         $carbon_time_end = Carbon::parse($order_b2c->time_end);
 
-        $jam_paket = ($order_b2c->service_type_id == 0 ? 8 : ($order_b2c->service_type_id == 1 ? 12 : 4));
+        $jam_paket = $order_b2c->paket->jumlah_jam;
         $carbon_paket_end = Carbon::parse($order_b2c->time_start)->addHours($jam_paket);
 
         $overtime = $carbon_paket_end->diffInHours($carbon_time_end, false) + 1;
@@ -230,11 +234,7 @@ class OrderB2CController extends Controller
         }
 
         // Currency Formatting
-        $order_b2c->service_type_id == 1 ?
-            $paket_cost = 299000 : // 12 Jam
-            ($order_b2c->service_type_id == 2 ?
-                $paket_cost = 185000 : //4 Jam
-                $paket_cost = 249000); //8 Jam;
+        $paket_cost = $order_b2c->paket->pricing->harga;
 
         // Luar Kota
         $order_b2c->local_city == 1 ?

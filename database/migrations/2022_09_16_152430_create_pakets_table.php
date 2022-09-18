@@ -17,6 +17,7 @@ class CreatePaketsTable extends Migration
             ->create('paket', function (Blueprint $table) {
                 $table->increments('id');
                 $table->integer('pricing_id', 11);
+                $table->integer('jumlah_jam');
                 $table->text('deskripsi_text');
                 $table->text('deskripsi_list');
             });

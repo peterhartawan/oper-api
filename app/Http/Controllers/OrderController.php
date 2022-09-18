@@ -43,6 +43,7 @@ use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
+use App\Models\B2C\Paket;
 use App\Models\Vehicles;
 use App\Services\PolisHandler;
 use App\Services\QontakHandler;
@@ -183,7 +184,7 @@ class OrderController extends Controller
 
         $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
 
-        if($identerprise != env('CARS24_IDENTERPRISE')){
+        if ($identerprise != env('CARS24_IDENTERPRISE')) {
             Validate::request($request->all(), [
                 'origin_latitude'   => "required|string",
                 'origin_longitude'  => "required|string",
@@ -308,7 +309,7 @@ class OrderController extends Controller
             );
 
             //B2C
-            if($identerprise == env('B2C_IDENTERPRISE')){
+            if ($identerprise == env('B2C_IDENTERPRISE')) {
                 // register customer if not exist
                 Validate::request($request->all(), [
                     'service_type_id' => "nullable|integer|digits:1",
@@ -381,385 +382,474 @@ class OrderController extends Controller
                 $qontakHandler = new QontakHandler();
 
                 $qontakHandler->sendMessage(
-                    "62".$request->user_phonenumber,
+                    "62" . $request->user_phonenumber,
                     "Order Created",
                     Constant::QONTAK_TEMPLATE_ID_ORDER_CREATED,
                     [
                         [
-                            "key"=> "1",
-                            "value"=> "link",
-                            "value_text"=> $link
+                            "key" => "1",
+                            "value" => "link",
+                            "value_text" => $link
                         ]
                     ]
                 );
 
                 $genderText = "Wanita";
-                if($user_gender == 1)
+                if ($user_gender == 1)
                     $genderText = "Pria";
-                if($user_gender == 2)
+                if ($user_gender == 2)
                     $genderText = "Lainnya";
 
                 $vehicleBrandName = VehicleBrand::where('id', $request->vehicle_brand_id)->first()->brand_name;
 
-                $paketText = "8 Jam";
-                if($service_type_id == 1)
-                    $paketText = "12 Jam";
-                if($service_type_id == 2)
-                    $paketText = "4 Jam";
+                $paketText = "";
+                $paketText = Paket::where('id', $service_type_id)
+                    ->with(['pricing'])
+                    ->first()
+                    ->pricing->nama;
+
+                // $paketText = "8 Jam";
+                // if ($service_type_id == 1)
+                //     $paketText = "12 Jam";
+                // if ($service_type_id == 2)
+                //     $paketText = "4 Jam";
 
                 $luarKotaText = "Tidak";
-                if($local_city == 0){
+                if ($local_city == 0) {
                     $luarKotaText = "Ya";
                     $stayText = ", Pulang-Pergi";
-                    if($stay == 1)
+                    if ($stay == 1)
                         $stayText = ", Menginap";
                     $luarKotaText = $luarKotaText . $stayText;
                 }
 
                 $deskripiText = $request->message ?
-                    str_replace("\n",". ","$request->message") :
+                    str_replace("\n", ". ", "$request->message") :
                     "Tidak ada catatan.";
 
-                // Mas Obiq
-                $qontakHandler->sendMessage(
-                    // override this number
-                    "6287783109503",
-                    "Order Created - Mas Obiq",
-                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                    [
+                if ($request->user_phonenumber !== '81365972928') {
+                    // Mas Obiq
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6287783109503",
+                        "Order Created - Mas Obiq",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         [
-                            "key"=> "1",
-                            "value"=> "nama",
-                            "value_text"=> $request->user_fullname
-                        ],
+                            [
+                                "key" => "1",
+                                "value" => "nama",
+                                "value_text" => $request->user_fullname
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "hp",
+                                "value_text" => $request->user_phonenumber
+                            ],
+                            [
+                                "key" => "3",
+                                "value" => "email",
+                                "value_text" => $user_email
+                            ],
+                            [
+                                "key" => "4",
+                                "value" => "gender",
+                                "value_text" => $genderText
+                            ],
+                            [
+                                "key" => "5",
+                                "value" => "merek",
+                                "value_text" => $vehicleBrandName
+                            ],
+                            [
+                                "key" => "6",
+                                "value" => "tipe",
+                                "value_text" => $request->vehicle_type
+                            ],
+                            [
+                                "key" => "7",
+                                "value" => "transmisi",
+                                "value_text" => $request->vehicle_transmission
+                            ],
+                            [
+                                "key" => "8",
+                                "value" => "plat",
+                                "value_text" => $request->client_vehicle_license
+                            ],
+                            [
+                                "key" => "9",
+                                "value" => "alamat",
+                                "value_text" => $request->destination_name
+                            ],
+                            [
+                                "key" => "10",
+                                "value" => "paket",
+                                "value_text" => $paketText
+                            ],
+                            [
+                                "key" => "11",
+                                "value" => "tanggal",
+                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                            ],
+                            [
+                                "key" => "12",
+                                "value" => "waktu",
+                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                            ],
+                            [
+                                "key" => "13",
+                                "value" => "luar_kota",
+                                "value_text" => $luarKotaText
+                            ],
+                            [
+                                "key" => "14",
+                                "value" => "asuransi",
+                                "value_text" => "Ya"
+                            ],
+                            [
+                                "key" => "15",
+                                "value" => "catatan",
+                                "value_text" => $deskripiText,
+                            ],
+                        ]
+                    );
+                    // Mas Heri
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6285710664061",
+                        "Order Created - Mas Heri",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         [
-                            "key"=> "2",
-                            "value"=> "hp",
-                            "value_text"=> $request->user_phonenumber
-                        ],
+                            [
+                                "key" => "1",
+                                "value" => "nama",
+                                "value_text" => $request->user_fullname
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "hp",
+                                "value_text" => $request->user_phonenumber
+                            ],
+                            [
+                                "key" => "3",
+                                "value" => "email",
+                                "value_text" => $user_email
+                            ],
+                            [
+                                "key" => "4",
+                                "value" => "gender",
+                                "value_text" => $genderText
+                            ],
+                            [
+                                "key" => "5",
+                                "value" => "merek",
+                                "value_text" => $vehicleBrandName
+                            ],
+                            [
+                                "key" => "6",
+                                "value" => "tipe",
+                                "value_text" => $request->vehicle_type
+                            ],
+                            [
+                                "key" => "7",
+                                "value" => "transmisi",
+                                "value_text" => $request->vehicle_transmission
+                            ],
+                            [
+                                "key" => "8",
+                                "value" => "plat",
+                                "value_text" => $request->client_vehicle_license
+                            ],
+                            [
+                                "key" => "9",
+                                "value" => "alamat",
+                                "value_text" => $request->destination_name
+                            ],
+                            [
+                                "key" => "10",
+                                "value" => "paket",
+                                "value_text" => $paketText
+                            ],
+                            [
+                                "key" => "11",
+                                "value" => "tanggal",
+                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                            ],
+                            [
+                                "key" => "12",
+                                "value" => "waktu",
+                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                            ],
+                            [
+                                "key" => "13",
+                                "value" => "luar_kota",
+                                "value_text" => $luarKotaText
+                            ],
+                            [
+                                "key" => "14",
+                                "value" => "asuransi",
+                                "value_text" => "Ya"
+                            ],
+                            [
+                                "key" => "15",
+                                "value" => "catatan",
+                                "value_text" => $deskripiText,
+                            ],
+                        ]
+                    );
+                    // Mas Wahid
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "628121816441",
+                        "Order Created - Mas Wahid",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         [
-                            "key"=> "3",
-                            "value"=> "email",
-                            "value_text"=> $user_email
-                        ],
+                            [
+                                "key" => "1",
+                                "value" => "nama",
+                                "value_text" => $request->user_fullname
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "hp",
+                                "value_text" => $request->user_phonenumber
+                            ],
+                            [
+                                "key" => "3",
+                                "value" => "email",
+                                "value_text" => $user_email
+                            ],
+                            [
+                                "key" => "4",
+                                "value" => "gender",
+                                "value_text" => $genderText
+                            ],
+                            [
+                                "key" => "5",
+                                "value" => "merek",
+                                "value_text" => $vehicleBrandName
+                            ],
+                            [
+                                "key" => "6",
+                                "value" => "tipe",
+                                "value_text" => $request->vehicle_type
+                            ],
+                            [
+                                "key" => "7",
+                                "value" => "transmisi",
+                                "value_text" => $request->vehicle_transmission
+                            ],
+                            [
+                                "key" => "8",
+                                "value" => "plat",
+                                "value_text" => $request->client_vehicle_license
+                            ],
+                            [
+                                "key" => "9",
+                                "value" => "alamat",
+                                "value_text" => $request->destination_name
+                            ],
+                            [
+                                "key" => "10",
+                                "value" => "paket",
+                                "value_text" => $paketText
+                            ],
+                            [
+                                "key" => "11",
+                                "value" => "tanggal",
+                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                            ],
+                            [
+                                "key" => "12",
+                                "value" => "waktu",
+                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                            ],
+                            [
+                                "key" => "13",
+                                "value" => "luar_kota",
+                                "value_text" => $luarKotaText
+                            ],
+                            [
+                                "key" => "14",
+                                "value" => "asuransi",
+                                "value_text" => "Ya"
+                            ],
+                            [
+                                "key" => "15",
+                                "value" => "catatan",
+                                "value_text" => $deskripiText,
+                            ],
+                        ]
+                    );
+                    // Mbak Gege
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6287804085880",
+                        "Order Created - Admin",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         [
-                            "key"=> "4",
-                            "value"=> "gender",
-                            "value_text"=> $genderText
-                        ],
+                            [
+                                "key" => "1",
+                                "value" => "nama",
+                                "value_text" => $request->user_fullname
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "hp",
+                                "value_text" => $request->user_phonenumber
+                            ],
+                            [
+                                "key" => "3",
+                                "value" => "email",
+                                "value_text" => $user_email
+                            ],
+                            [
+                                "key" => "4",
+                                "value" => "gender",
+                                "value_text" => $genderText
+                            ],
+                            [
+                                "key" => "5",
+                                "value" => "merek",
+                                "value_text" => $vehicleBrandName
+                            ],
+                            [
+                                "key" => "6",
+                                "value" => "tipe",
+                                "value_text" => $request->vehicle_type
+                            ],
+                            [
+                                "key" => "7",
+                                "value" => "transmisi",
+                                "value_text" => $request->vehicle_transmission
+                            ],
+                            [
+                                "key" => "8",
+                                "value" => "plat",
+                                "value_text" => $request->client_vehicle_license
+                            ],
+                            [
+                                "key" => "9",
+                                "value" => "alamat",
+                                "value_text" => $request->destination_name
+                            ],
+                            [
+                                "key" => "10",
+                                "value" => "paket",
+                                "value_text" => $paketText
+                            ],
+                            [
+                                "key" => "11",
+                                "value" => "tanggal",
+                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                            ],
+                            [
+                                "key" => "12",
+                                "value" => "waktu",
+                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                            ],
+                            [
+                                "key" => "13",
+                                "value" => "luar_kota",
+                                "value_text" => $luarKotaText
+                            ],
+                            [
+                                "key" => "14",
+                                "value" => "asuransi",
+                                "value_text" => "Ya"
+                            ],
+                            [
+                                "key" => "15",
+                                "value" => "catatan",
+                                "value_text" => $deskripiText,
+                            ],
+                        ]
+                    );
+                } else {
+                    // TESTER
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6281365972928",
+                        "Order Created - TESTER",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         [
-                            "key"=> "5",
-                            "value"=> "merek",
-                            "value_text"=> $vehicleBrandName
-                        ],
-                        [
-                            "key"=> "6",
-                            "value"=> "tipe",
-                            "value_text"=> $request->vehicle_type
-                        ],
-                        [
-                            "key"=> "7",
-                            "value"=> "transmisi",
-                            "value_text"=> $request->vehicle_transmission
-                        ],
-                        [
-                            "key"=> "8",
-                            "value"=> "plat",
-                            "value_text"=> $request->client_vehicle_license
-                        ],
-                        [
-                            "key"=> "9",
-                            "value"=> "alamat",
-                            "value_text"=> $request->destination_name
-                        ],
-                        [
-                            "key"=> "10",
-                            "value"=> "paket",
-                            "value_text"=> $paketText
-                        ],
-                        [
-                            "key"=> "11",
-                            "value"=> "tanggal",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
-                        ],
-                        [
-                            "key"=> "12",
-                            "value"=> "waktu",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                        ],
-                        [
-                            "key"=> "13",
-                            "value"=> "luar_kota",
-                            "value_text"=> $luarKotaText
-                        ],
-                        [
-                            "key"=> "14",
-                            "value"=> "asuransi",
-                            "value_text"=> "Ya"
-                        ],
-                        [
-                            "key"=> "15",
-                            "value"=> "catatan",
-                            "value_text"=> $deskripiText,
-                        ],
-                    ]
-                );
-                // Mas Heri
-                $qontakHandler->sendMessage(
-                    // override this number
-                    "6285710664061",
-                    "Order Created - Mas Heri",
-                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                    [
-                        [
-                            "key"=> "1",
-                            "value"=> "nama",
-                            "value_text"=> $request->user_fullname
-                        ],
-                        [
-                            "key"=> "2",
-                            "value"=> "hp",
-                            "value_text"=> $request->user_phonenumber
-                        ],
-                        [
-                            "key"=> "3",
-                            "value"=> "email",
-                            "value_text"=> $user_email
-                        ],
-                        [
-                            "key"=> "4",
-                            "value"=> "gender",
-                            "value_text"=> $genderText
-                        ],
-                        [
-                            "key"=> "5",
-                            "value"=> "merek",
-                            "value_text"=> $vehicleBrandName
-                        ],
-                        [
-                            "key"=> "6",
-                            "value"=> "tipe",
-                            "value_text"=> $request->vehicle_type
-                        ],
-                        [
-                            "key"=> "7",
-                            "value"=> "transmisi",
-                            "value_text"=> $request->vehicle_transmission
-                        ],
-                        [
-                            "key"=> "8",
-                            "value"=> "plat",
-                            "value_text"=> $request->client_vehicle_license
-                        ],
-                        [
-                            "key"=> "9",
-                            "value"=> "alamat",
-                            "value_text"=> $request->destination_name
-                        ],
-                        [
-                            "key"=> "10",
-                            "value"=> "paket",
-                            "value_text"=> $paketText
-                        ],
-                        [
-                            "key"=> "11",
-                            "value"=> "tanggal",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
-                        ],
-                        [
-                            "key"=> "12",
-                            "value"=> "waktu",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                        ],
-                        [
-                            "key"=> "13",
-                            "value"=> "luar_kota",
-                            "value_text"=> $luarKotaText
-                        ],
-                        [
-                            "key"=> "14",
-                            "value"=> "asuransi",
-                            "value_text"=> "Ya"
-                        ],
-                        [
-                            "key"=> "15",
-                            "value"=> "catatan",
-                            "value_text"=> $deskripiText,
-                        ],
-                    ]
-                );
-                // Mas Wahid
-                $qontakHandler->sendMessage(
-                    // override this number
-                    "628121816441",
-                    "Order Created - Mas Wahid",
-                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                    [
-                        [
-                            "key"=> "1",
-                            "value"=> "nama",
-                            "value_text"=> $request->user_fullname
-                        ],
-                        [
-                            "key"=> "2",
-                            "value"=> "hp",
-                            "value_text"=> $request->user_phonenumber
-                        ],
-                        [
-                            "key"=> "3",
-                            "value"=> "email",
-                            "value_text"=> $user_email
-                        ],
-                        [
-                            "key"=> "4",
-                            "value"=> "gender",
-                            "value_text"=> $genderText
-                        ],
-                        [
-                            "key"=> "5",
-                            "value"=> "merek",
-                            "value_text"=> $vehicleBrandName
-                        ],
-                        [
-                            "key"=> "6",
-                            "value"=> "tipe",
-                            "value_text"=> $request->vehicle_type
-                        ],
-                        [
-                            "key"=> "7",
-                            "value"=> "transmisi",
-                            "value_text"=> $request->vehicle_transmission
-                        ],
-                        [
-                            "key"=> "8",
-                            "value"=> "plat",
-                            "value_text"=> $request->client_vehicle_license
-                        ],
-                        [
-                            "key"=> "9",
-                            "value"=> "alamat",
-                            "value_text"=> $request->destination_name
-                        ],
-                        [
-                            "key"=> "10",
-                            "value"=> "paket",
-                            "value_text"=> $paketText
-                        ],
-                        [
-                            "key"=> "11",
-                            "value"=> "tanggal",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
-                        ],
-                        [
-                            "key"=> "12",
-                            "value"=> "waktu",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                        ],
-                        [
-                            "key"=> "13",
-                            "value"=> "luar_kota",
-                            "value_text"=> $luarKotaText
-                        ],
-                        [
-                            "key"=> "14",
-                            "value"=> "asuransi",
-                            "value_text"=> "Ya"
-                        ],
-                        [
-                            "key"=> "15",
-                            "value"=> "catatan",
-                            "value_text"=> $deskripiText,
-                        ],
-                    ]
-                );
-                // Mbak Gege
-                $qontakHandler->sendMessage(
-                    // override this number
-                    "6287804085880",
-                    "Order Created - Admin",
-                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                    [
-                        [
-                            "key"=> "1",
-                            "value"=> "nama",
-                            "value_text"=> $request->user_fullname
-                        ],
-                        [
-                            "key"=> "2",
-                            "value"=> "hp",
-                            "value_text"=> $request->user_phonenumber
-                        ],
-                        [
-                            "key"=> "3",
-                            "value"=> "email",
-                            "value_text"=> $user_email
-                        ],
-                        [
-                            "key"=> "4",
-                            "value"=> "gender",
-                            "value_text"=> $genderText
-                        ],
-                        [
-                            "key"=> "5",
-                            "value"=> "merek",
-                            "value_text"=> $vehicleBrandName
-                        ],
-                        [
-                            "key"=> "6",
-                            "value"=> "tipe",
-                            "value_text"=> $request->vehicle_type
-                        ],
-                        [
-                            "key"=> "7",
-                            "value"=> "transmisi",
-                            "value_text"=> $request->vehicle_transmission
-                        ],
-                        [
-                            "key"=> "8",
-                            "value"=> "plat",
-                            "value_text"=> $request->client_vehicle_license
-                        ],
-                        [
-                            "key"=> "9",
-                            "value"=> "alamat",
-                            "value_text"=> $request->destination_name
-                        ],
-                        [
-                            "key"=> "10",
-                            "value"=> "paket",
-                            "value_text"=> $paketText
-                        ],
-                        [
-                            "key"=> "11",
-                            "value"=> "tanggal",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
-                        ],
-                        [
-                            "key"=> "12",
-                            "value"=> "waktu",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                        ],
-                        [
-                            "key"=> "13",
-                            "value"=> "luar_kota",
-                            "value_text"=> $luarKotaText
-                        ],
-                        [
-                            "key"=> "14",
-                            "value"=> "asuransi",
-                            "value_text"=> "Ya"
-                        ],
-                        [
-                            "key"=> "15",
-                            "value"=> "catatan",
-                            "value_text"=> $deskripiText,
-                        ],
-                    ]
-                );
-
-
-
-                // return Response::success($qontakHandler);
+                            [
+                                "key" => "1",
+                                "value" => "nama",
+                                "value_text" => $request->user_fullname
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "hp",
+                                "value_text" => $request->user_phonenumber
+                            ],
+                            [
+                                "key" => "3",
+                                "value" => "email",
+                                "value_text" => $user_email
+                            ],
+                            [
+                                "key" => "4",
+                                "value" => "gender",
+                                "value_text" => $genderText
+                            ],
+                            [
+                                "key" => "5",
+                                "value" => "merek",
+                                "value_text" => $vehicleBrandName
+                            ],
+                            [
+                                "key" => "6",
+                                "value" => "tipe",
+                                "value_text" => $request->vehicle_type
+                            ],
+                            [
+                                "key" => "7",
+                                "value" => "transmisi",
+                                "value_text" => $request->vehicle_transmission
+                            ],
+                            [
+                                "key" => "8",
+                                "value" => "plat",
+                                "value_text" => $request->client_vehicle_license
+                            ],
+                            [
+                                "key" => "9",
+                                "value" => "alamat",
+                                "value_text" => $request->destination_name
+                            ],
+                            [
+                                "key" => "10",
+                                "value" => "paket",
+                                "value_text" => $paketText
+                            ],
+                            [
+                                "key" => "11",
+                                "value" => "tanggal",
+                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                            ],
+                            [
+                                "key" => "12",
+                                "value" => "waktu",
+                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                            ],
+                            [
+                                "key" => "13",
+                                "value" => "luar_kota",
+                                "value_text" => $luarKotaText
+                            ],
+                            [
+                                "key" => "14",
+                                "value" => "asuransi",
+                                "value_text" => "Ya"
+                            ],
+                            [
+                                "key" => "15",
+                                "value" => "catatan",
+                                "value_text" => $deskripiText,
+                            ],
+                        ]
+                    );
+                }
             }
 
             DB::commit();
@@ -813,7 +903,7 @@ class OrderController extends Controller
             }
 
             $response = $order_connection->find($order->idorder);
-            if($identerprise == env('B2C_IDENTERPRISE')){
+            if ($identerprise == env('B2C_IDENTERPRISE')) {
                 $response->link = $new_order_b2c->link;
             }
 
@@ -959,7 +1049,7 @@ class OrderController extends Controller
         $identerprise       = $user->client_enterprise_identerprise;
         $order_connection   = $this->switchOrderConnection($identerprise);
 
-        if($identerprise == env('CARS24_IDENTERPRISE')){
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             Validate::request($request->all(), [
                 'idorder'        => "required|integer|exists:cars24.order",
                 'reason_cancel'  => "required|string"
@@ -1004,7 +1094,7 @@ class OrderController extends Controller
         ]);
 
         // B2C
-        if($identerprise == env('B2C_IDENTERPRISE')){
+        if ($identerprise == env('B2C_IDENTERPRISE')) {
             $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
 
             $b2c_order->update([
@@ -1056,7 +1146,7 @@ class OrderController extends Controller
         $identerprise       = auth()->guard('api')->user()->client_enterprise_identerprise;
         $order_connection   = $this->switchOrderConnection($identerprise);
 
-        if($identerprise == env('CARS24_IDENTERPRISE')){
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             Validate::request($request->all(), [
                 'idorder'        => "required|integer|exists:cars24.order",
                 'driver_userid'  => "required|integer|exists:users,id"
@@ -1190,7 +1280,7 @@ class OrderController extends Controller
             if ($fcmRegIds) {
                 $title           = "New Order #{$data_order->trx_id}";
                 $messagebody     = "You have an order";
-                $clickAction	 = "orderUpdate";
+                $clickAction     = "orderUpdate";
                 $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody, $clickAction);
                 $returnsendorder = Notification::sendNotification($getGenNotif);
                 if ($returnsendorder == false) {
@@ -1258,7 +1348,7 @@ class OrderController extends Controller
                 $email->notify(new OrderNotification($orderan));
             }
 
-            if($identerprise == env('B2C_IDENTERPRISE')){
+            if ($identerprise == env('B2C_IDENTERPRISE')) {
                 $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
                     ->update([
                         'status' => 1
@@ -1271,14 +1361,14 @@ class OrderController extends Controller
                 $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
                 $qontakHandler = new QontakHandler();
                 $qontakHandler->sendMessage(
-                    "62".$phone,
+                    "62" . $phone,
                     "DRIVER ASSIGNED",
                     Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
                     [
                         [
-                            "key"=> "1",
-                            "value"=> "link",
-                            "value_text"=> $link
+                            "key" => "1",
+                            "value" => "link",
+                            "value_text" => $link
                         ],
                     ]
                 );
@@ -1517,7 +1607,7 @@ class OrderController extends Controller
         if ($export == Constant::BOOLEAN_TRUE) {
             if (!empty($month)) {
                 $file_name = "Order_export" . $order_status . "-" . $month . ".xlsx";
-                if($idvendor == env('OLX_IDVENDOR')){
+                if ($idvendor == env('OLX_IDVENDOR')) {
                     Excel::store(new OrdersExportFromView($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
                 } else {
                     Excel::store(new OrdersExport($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
@@ -1547,27 +1637,30 @@ class OrderController extends Controller
 
         //select
         $order->with([
-                'vehicle_branch' => function($query){
-                    $query->select('id', 'brand_name as vehicle_brand.brand_name');
-                },
-                'enterprise' => function($query){
-                    $query->select('identerprise', 'name as nama_client_enterprise');
-                },
-                'driver.user' => function($query){
-                        $query->select(
-                            'id',
-                            'name as nama_driver',
-                            'profile_picture',
-                            'profil_picture_2');
-                }
-            ])
+            'vehicle_branch' => function ($query) {
+                $query->select('id', 'brand_name as vehicle_brand.brand_name');
+            },
+            'enterprise' => function ($query) {
+                $query->select('identerprise', 'name as nama_client_enterprise');
+            },
+            'driver.user' => function ($query) {
+                $query->select(
+                    'id',
+                    'name as nama_driver',
+                    'profile_picture',
+                    'profil_picture_2'
+                );
+            }
+        ])
             ->select(
                 'order.*',
                 DB::Raw(
                     "IF(order.order_status = 1, 'Open',
                     IF(order.order_status = 2, 'In Progress',
                     IF(order.order_status = 3, 'Completed',
-                    IF(order.order_status = 5, 'Canceled', 'Unknown')))) as status_text"));
+                    IF(order.order_status = 5, 'Canceled', 'Unknown')))) as status_text"
+                )
+            );
 
         $order = $order->get();
         array_walk($order, function (&$v, $k) {
@@ -1796,7 +1889,7 @@ class OrderController extends Controller
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
 
-                if($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')){
+                if ($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')) {
                     $order_open             = Order::on('cars24')
                         ->where('order.order_status', Constant::ORDER_OPEN)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
@@ -1836,7 +1929,6 @@ class OrderController extends Controller
                         ->where('order.order_status', Constant::ORDER_COMPLETED)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                         ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
-
                 } else {
                     $order_open         = DB::table('order')
                         ->where('order.order_status', Constant::ORDER_OPEN)
@@ -2302,10 +2394,10 @@ class OrderController extends Controller
                 }
 
                 // Otopickup
-                if($identerprise == env('OP_IDENTERPRISE')){
+                if ($identerprise == env('OP_IDENTERPRISE')) {
                     $qontakHandler = new QontakHandler();
 
-                    switch($OrderTasks->sequence){
+                    switch ($OrderTasks->sequence) {
                         case Constant::OP_PICKUP_SEQUENCE:
                             $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
@@ -2315,83 +2407,84 @@ class OrderController extends Controller
                                 Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
                                 [
                                     [
-                                        "key"=> "1",
-                                        "value"=> "id",
-                                        "value_text"=> $trx_id
+                                        "key" => "1",
+                                        "value" => "id",
+                                        "value_text" => $trx_id
                                     ],
                                     [
-                                        "key"=> "2",
-                                        "value"=> "link",
-                                        "value_text"=> "https://otopickup.oper.co.id/tracking/" . $trx_id
+                                        "key" => "2",
+                                        "value" => "link",
+                                        "value_text" => "https://otopickup.oper.co.id/tracking/" . $trx_id
                                     ],
-                                ]);
+                                ]
+                            );
 
                             break;
 
-                        // case Constant::OP_CONSULT_SEQUENCE:
-                        //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                            // case Constant::OP_CONSULT_SEQUENCE:
+                            //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
-                        //     $qontakHandler->sendMessage(
-                        //         "628121816441",
-                        //         "Wahid OPER",
-                        //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                        //         [
-                        //             [
-                        //                 "key"=> "1",
-                        //                 "value"=> "id",
-                        //                 "value_text"=> $trx_id
-                        //             ],
-                        //             [
-                        //                 "key"=> "2",
-                        //                 "value"=> "link",
-                        //                 "value_text"=> "https://otopickup.oper.co.id/status/consult/" . $trx_id
-                        //             ],
-                        //         ]);
+                            //     $qontakHandler->sendMessage(
+                            //         "628121816441",
+                            //         "Wahid OPER",
+                            //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                            //         [
+                            //             [
+                            //                 "key"=> "1",
+                            //                 "value"=> "id",
+                            //                 "value_text"=> $trx_id
+                            //             ],
+                            //             [
+                            //                 "key"=> "2",
+                            //                 "value"=> "link",
+                            //                 "value_text"=> "https://otopickup.oper.co.id/status/consult/" . $trx_id
+                            //             ],
+                            //         ]);
 
-                        //     break;
+                            //     break;
 
-                        // case Constant::OP_SERVICE_SEQUENCE:
-                        //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                            // case Constant::OP_SERVICE_SEQUENCE:
+                            //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
-                        //     $qontakHandler->sendMessage(
-                        //         "628121816441",
-                        //         "Wahid OPER",
-                        //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                        //         [
-                        //             [
-                        //                 "key"=> "1",
-                        //                 "value"=> "id",
-                        //                 "value_text"=> $trx_id
-                        //             ],
-                        //             [
-                        //                 "key"=> "2",
-                        //                 "value"=> "link",
-                        //                 "value_text"=> "https://otopickup.oper.co.id/status/service/" . $trx_id
-                        //             ],
-                        //         ]);
+                            //     $qontakHandler->sendMessage(
+                            //         "628121816441",
+                            //         "Wahid OPER",
+                            //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                            //         [
+                            //             [
+                            //                 "key"=> "1",
+                            //                 "value"=> "id",
+                            //                 "value_text"=> $trx_id
+                            //             ],
+                            //             [
+                            //                 "key"=> "2",
+                            //                 "value"=> "link",
+                            //                 "value_text"=> "https://otopickup.oper.co.id/status/service/" . $trx_id
+                            //             ],
+                            //         ]);
 
-                        //     break;
-                        // case Constant::OP_DROPOFF_SEQUENCE:
-                        //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                            //     break;
+                            // case Constant::OP_DROPOFF_SEQUENCE:
+                            //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
-                        //     $qontakHandler->sendMessage(
-                        //         "628121816441",
-                        //         "Wahid OPER",
-                        //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                        //         [
-                        //             [
-                        //                 "key"=> "1",
-                        //                 "value"=> "id",
-                        //                 "value_text"=> $trx_id
-                        //             ],
-                        //             [
-                        //                 "key"=> "2",
-                        //                 "value"=> "link",
-                        //                 "value_text"=> "https://otopickup.oper.co.id/status/dropoff/" . $trx_id
-                        //             ],
-                        //         ]);
+                            //     $qontakHandler->sendMessage(
+                            //         "628121816441",
+                            //         "Wahid OPER",
+                            //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                            //         [
+                            //             [
+                            //                 "key"=> "1",
+                            //                 "value"=> "id",
+                            //                 "value_text"=> $trx_id
+                            //             ],
+                            //             [
+                            //                 "key"=> "2",
+                            //                 "value"=> "link",
+                            //                 "value_text"=> "https://otopickup.oper.co.id/status/dropoff/" . $trx_id
+                            //             ],
+                            //         ]);
 
-                        //     break;
+                            //     break;
                     }
                 }
 
@@ -2463,7 +2556,7 @@ class OrderController extends Controller
                         ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
 
                     // B2C
-                    if($identerprise == env('B2C_IDENTERPRISE')){
+                    if ($identerprise == env('B2C_IDENTERPRISE')) {
                         $b2c_order = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder);
 
                         $b2c_order->update([
@@ -2473,7 +2566,7 @@ class OrderController extends Controller
                         $order_b2c = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder)->first();
 
                         $kupon_id = $order_b2c->kupon_id;
-                        if($kupon_id != null) {
+                        if ($kupon_id != null) {
                             Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
                         }
 
@@ -2481,7 +2574,7 @@ class OrderController extends Controller
                         $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
                         $qontakHandler = new QontakHandler();
                         $qontakHandler->sendMessage(
-                            "62".$phone,
+                            "62" . $phone,
                             "Order Verified",
                             Constant::QONTAK_TEMPLATE_VERIFIED,
                             []
@@ -2489,7 +2582,7 @@ class OrderController extends Controller
                     }
 
                     // Arista
-                    if($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE')){
+                    if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE')) {
                         // Finish insurance order params
                         $finishParams = [
                             "trx_id" => $detail_order->trx_id,
@@ -2617,7 +2710,7 @@ class OrderController extends Controller
             case Constant::ROLE_DRIVER:
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format')
-                    ->with(['enterprise', 'task_template' => function ($query){
+                    ->with(['enterprise', 'task_template' => function ($query) {
                         $query->select(['task_template_id', 'task_template_name']);
                     }])
                     ->whereIn('order.order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])
@@ -2628,7 +2721,7 @@ class OrderController extends Controller
             case Constant::ROLE_EMPLOYEE:
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format')
-                    ->with(['enterprise', 'task_template' => function ($query){
+                    ->with(['enterprise', 'task_template' => function ($query) {
                         $query->select(['task_template_id', 'task_template_name']);
                     }])
                     ->whereIn('order.order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])
@@ -2651,11 +2744,17 @@ class OrderController extends Controller
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format')
                     ->with([
-                            "order_tasks",
-                            "enterprise" => function($query){$query->select('identerprise', 'name');},
-                            "vehicle_branch" => function($query){$query->select('id', 'brand_name');},
-                            "task_template" => function($query){$query->select('task_template_id', 'task_template_name');}
-                        ])
+                        "order_tasks",
+                        "enterprise" => function ($query) {
+                            $query->select('identerprise', 'name');
+                        },
+                        "vehicle_branch" => function ($query) {
+                            $query->select('id', 'brand_name');
+                        },
+                        "task_template" => function ($query) {
+                            $query->select('task_template_id', 'task_template_name');
+                        }
+                    ])
                     ->where('idorder', $id)
                     ->whereIn('order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])->first();
                 break;
@@ -2664,10 +2763,14 @@ class OrderController extends Controller
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format')
                     ->with([
-                            "order_tasks",
-                            "enterprise" => function($query){$query->select('identerprise', 'name');},
-                            "task_template" => function($query){$query->select('task_template_id', 'task_template_name');}
-                        ])
+                        "order_tasks",
+                        "enterprise" => function ($query) {
+                            $query->select('identerprise', 'name');
+                        },
+                        "task_template" => function ($query) {
+                            $query->select('task_template_id', 'task_template_name');
+                        }
+                    ])
                     ->where('idorder', $id)
                     ->whereIn('order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])->first();
                 break;
@@ -2741,7 +2844,8 @@ class OrderController extends Controller
     }
 
     // Get all unavailable dates array
-    public function unavailableDates(){
+    public function unavailableDates()
+    {
         // For now let's test with all orders
         // $dates = Order::all()->pluck('booking_time');
         $dates = Order::selectRaw('booking_time, @booking_date:=(DATE(booking_time)) as booking_date, COUNT(@booking_date) as booking_date_count')
@@ -2751,19 +2855,19 @@ class OrderController extends Controller
             ->orderBy('booking_date', 'desc')
             ->get();
 
-        if(count($dates) === 0){
+        if (count($dates) === 0) {
             $arr = [];
 
             $now = Carbon::now();
 
             // Today's order time limit
             $curDateFourPM = Carbon::today()->addHours(16);
-            if($now->gt($curDateFourPM)){
+            if ($now->gt($curDateFourPM)) {
                 array_push($arr, $now->format('Y-m-d'));
             }
             // Tomorrow's order time limit
             $curDateNinePM = Carbon::today()->addHours(21);
-            if($now->gt($curDateNinePM)){
+            if ($now->gt($curDateNinePM)) {
                 array_push($arr, $now->addDays(1)->format('Y-m-d'));
             }
 
@@ -2789,18 +2893,18 @@ class OrderController extends Controller
 
         // Today's order time limit
         $curDateFourPM = Carbon::today()->addHours(16);
-        if($now->gt($curDateFourPM)){
+        if ($now->gt($curDateFourPM)) {
             array_push($dates, $now->format('Y-m-d'));
         }
         // Tomorrow's order time limit
         $curDateNinePM = Carbon::today()->addHours(21);
-        if($now->gt($curDateNinePM)){
+        if ($now->gt($curDateNinePM)) {
             array_push($dates, $now->addDays(1)->format('Y-m-d'));
         }
 
         $days = [];
 
-        for($i = 0; $i <= $dayDiff; $i++){
+        for ($i = 0; $i <= $dayDiff; $i++) {
             array_push($days, ["booking_date" => Carbon::today()->addDays($i)->format("Y-m-d")]);
         }
 
@@ -2808,7 +2912,7 @@ class OrderController extends Controller
 
         $availableDatesCollection = $dayCollection->whereNotIn('booking_date', $dates);
 
-        if($availableDatesCollection->count() === 0){
+        if ($availableDatesCollection->count() === 0) {
             $nearestDate = $latestDate->addDays(1)->format("Y-m-d");
         } else {
             $nearestDate = $availableDatesCollection->first()['booking_date'];
@@ -2826,17 +2930,19 @@ class OrderController extends Controller
     }
 
     //get connection for cross-server queries
-    private function switchOrderConnection($identerprise){
+    private function switchOrderConnection($identerprise)
+    {
         $connection = Order::on('mysql');
-        if($identerprise == env('CARS24_IDENTERPRISE')) {
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             $connection = Order::on('cars24');
         }
         return $connection;
     }
 
-    private function switchOrderTasksConnection($identerprise){
+    private function switchOrderTasksConnection($identerprise)
+    {
         $connection = OrderTasks::on('mysql');
-        if($identerprise == env('CARS24_IDENTERPRISE')) {
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             $connection = OrderTasks::on('cars24');
         }
         return $connection;

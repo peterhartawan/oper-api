@@ -13,6 +13,7 @@ class Paket extends Model
 
     protected $fillable = [
         'pricing_id',
+        'jumlah_jam',
         'deskripsi_text',
         'deskripsi_list'
     ];

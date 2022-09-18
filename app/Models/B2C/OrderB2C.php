@@ -31,8 +31,13 @@ class OrderB2C extends Model
 
     public function customer()
 	{
-		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'customer_id','id');
+		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'customer_id', 'id');
 	}
+
+    public function paket()
+    {
+        return $this->hasOne(\App\Models\B2C\Paket::class, 'id', 'service_type_id')->with(['pricing']);
+    }
 
     public function rating()
     {
