@@ -11,6 +11,7 @@ use App\Services\Validate;
 use DB;
 use App\Exceptions\ApplicationException;
 use App\Models\B2C\CustomerB2C;
+use App\Models\B2C\Kupon;
 use App\Services\QontakHandler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -95,23 +96,25 @@ class OTPB2CController extends Controller
                     $firstPromo = FirstPromo::where('phone', $request->phone)->first();
 
                     if(empty($firstPromo)){
+                        $promo = Promo::where('id', 1)->first();
+
                         // Get first promo code
-                        $firstPromoCode = Promo::where('id', 1)->first()->kode;
+                        // $firstPromoCode = $promo->kode;
 
-                        $qontakHandler = new QontakHandler();
+                        // $qontakHandler = new QontakHandler();
 
-                        $qontakHandler->sendMessage(
-                            "62".$otp->phone,
-                            "OTP",
-                            Constant::QONTAK_TEMPLATE_FIRST_PROMO,
-                            [
-                                [
-                                    "key"=> "1",
-                                    "value"=> "kode_promo",
-                                    "value_text"=> $firstPromoCode
-                                ]
-                            ]
-                        );
+                        // $qontakHandler->sendMessage(
+                        //     "62".$otp->phone,
+                        //     "OTP",
+                        //     Constant::QONTAK_TEMPLATE_FIRST_PROMO,
+                        //     [
+                        //         [
+                        //             "key"=> "1",
+                        //             "value"=> "kode_promo",
+                        //             "value_text"=> $firstPromoCode
+                        //         ]
+                        //     ]
+                        // );
 
                         // Update first Promo
                         FirstPromo::create([
@@ -119,9 +122,19 @@ class OTPB2CController extends Controller
                         ]);
 
                         // Create customer
-                        CustomerB2C::create([
+                        $customer = CustomerB2C::create([
                             'phone' => $otp->phone
                         ]);
+
+                        // Straight to redeem NEWUSER
+                        Kupon::create(
+                            [
+                                'promo_id' => 1,
+                                'customer_id' => $customer->id,
+                                'jumlah_kupon' => $promo->jumlah_klaim,
+                                'waktu_berakhir' => Carbon::today()->addDays($promo->hari_berlaku)->format('Y-m-d')
+                            ]
+                        );
                     }
 
                     return Response::success($otp->phone);

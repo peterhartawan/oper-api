@@ -47,18 +47,22 @@ class CheckEndingOrder extends Command
             ->whereNull('time_end')
             ->select(
                 // 'orders.time_start',
-                DB::Raw("@estend:=(IF(service_type_id = 0, DATE_ADD(time_start, INTERVAL 480 MINUTE),
-                  IF(service_type_id = 1,
-                   DATE_ADD(time_start, INTERVAL 720 MINUTE),
-                   DATE_ADD(time_start, INTERVAL 240 MINUTE)
+                DB::Raw("@estend:=(IF(service_type_id = 1, DATE_ADD(time_start, INTERVAL 120 MINUTE),
+                  IF(service_type_id = 2,
+                   DATE_ADD(time_start, INTERVAL 240 MINUTE),
+                   iF(service_type_id = 3),
+                    DATE_ADD(time_start, INTERVAL 480 MINUTE),
+                    DATE_ADD(time_start, INTERVAL 720 MINUTE)
                   )
                  )) as est_end"),
                 DB::Raw("@timenow:=(NOW()) as time_now"),
                 DB::Raw("TIMESTAMPDIFF(MINUTE, @timenow, @estend) as time_diff"),
-                DB::Raw("IF(service_type_id = 0, '8 Jam',
-                 IF(service_type_id = 1,
-                  '12 Jam',
-                  '4 Jam'
+                DB::Raw("IF(service_type_id = 1, '2 Jam',
+                 IF(service_type_id = 2,
+                  '4 Jam',
+                  IF(service_type_id = 3,
+                    '8 Jam',
+                    '12 Jam'
                  )
                 ) as pk_name"),
                 'orders.*',
@@ -74,8 +78,19 @@ class CheckEndingOrder extends Command
             if($order->time_diff == 29){
                 // Log::info("Order dengan ID " . $order->id . " 30 min, tembak WA");
                 $phone = $order->customer->phone;
-                $paket = 8;
-                $order->service_type_id == 1 ? $paket = 12 : $paket = 4;
+                switch($order->service_type_id){
+                    case 1:
+                        $paket = 2;
+                        break;
+                    case 2:
+                        $paket = 4;
+                        break;
+                    case 3:
+                        $paket = 8;
+                        break;
+                    case 4:
+                        $paket = 12;
+                }
                 $qontakHandler->sendMessage(
                     "62".$phone,
                     "Reminder 30min",
@@ -94,8 +109,19 @@ class CheckEndingOrder extends Command
                 // Log::info("Order dengan ID " . $order->id . " masuk OVERTIME, tembak WA");
                 $fullname = $order->customer->fullname;
                 $phone = $order->customer->phone;
-                $paket = 8;
-                $order->service_type_id == 1 ? $paket = 12 : $paket = 4;
+                switch($order->service_type_id){
+                    case 1:
+                        $paket = 2;
+                        break;
+                    case 2:
+                        $paket = 4;
+                        break;
+                    case 3:
+                        $paket = 8;
+                        break;
+                    case 4:
+                        $paket = 12;
+                }
                 $qontakHandler->sendMessage(
                     "62".$phone,
                     "Reminder 30min",
