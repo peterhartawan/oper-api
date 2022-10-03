@@ -43,6 +43,7 @@ use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
+use App\Models\B2C\OpsHours;
 use App\Models\B2C\Paket;
 use App\Models\Vehicles;
 use App\Services\PolisHandler;
@@ -2846,87 +2847,57 @@ class OrderController extends Controller
     // Get all unavailable dates array
     public function unavailableDates()
     {
-        // For now let's test with all orders
-        // $dates = Order::all()->pluck('booking_time');
         $dates = Order::selectRaw('booking_time, @booking_date:=(DATE(booking_time)) as booking_date, COUNT(@booking_date) as booking_date_count')
-            ->whereDate('booking_time', '>=', Carbon::now())
+            ->whereDate('booking_time', '>=', Carbon::today())
             ->where('client_enterprise_identerprise', env("B2C_IDENTERPRISE"))
             ->groupBy('booking_date')
             ->orderBy('booking_date', 'desc')
             ->get();
 
-        if (count($dates) === 0) {
-            $arr = [];
+        // return Response::success(!$dates);
 
-            $now = Carbon::now();
+        $jamOps = OpsHours::get();
 
-            // Today's order time limit
-            $curDateFourPM = Carbon::today()->addHours(16);
-            if ($now->gt($curDateFourPM)) {
-                array_push($arr, $now->format('Y-m-d'));
+        if (!$dates) {
+
+            // Nearest date
+            $latestDate = Carbon::parse($dates->first()->booking_date);
+            $todayDate = Carbon::today();
+            $dayDiff = $latestDate->diffInDays($todayDate);
+
+            $dates = $dates->where('booking_date_count', '>=', 10)->pluck('booking_date')->toArray();
+
+            $days = [];
+
+            for ($i = 0; $i <= $dayDiff; $i++) {
+                array_push($days, ["booking_date" => Carbon::today()->addDays($i)->format("Y-m-d")]);
             }
-            // Tomorrow's order time limit
-            $curDateNinePM = Carbon::today()->addHours(21);
-            if ($now->gt($curDateNinePM)) {
-                array_push($arr, $now->addDays(1)->format('Y-m-d'));
+
+            $dayCollection = collect($days);
+
+            $availableDatesCollection = $dayCollection->whereNotIn('booking_date', $dates);
+
+            if ($availableDatesCollection->count() === 0) {
+                $nearestDate = $latestDate->addDays(1)->format("Y-m-d");
+            } else {
+                $nearestDate = $availableDatesCollection->first()['booking_date'];
             }
 
             $dateArray = [
-                "unavailable_dates" => $arr,
-                "nearest_date" => Carbon::today()->format("Y-m-d"),
-                "type" => 1
+                "unavailable_dates" => $dates,
+                "nearest_date" => $nearestDate,
+                "ops_hours" => $jamOps
             ];
-            return Response::success($dateArray);
-        }
-
-        // Nearest date
-        $latestDate = Carbon::parse($dates->first()->booking_date);
-        $todayDate = Carbon::today();
-        $dayDiff = $latestDate->diffInDays($todayDate);
-
-        // Change the date count (at this moment 1) to 10 later on after demo
-        $dates = $dates->where('booking_date_count', '>=', 10)->pluck('booking_date')->toArray();
-
-        // Check if today is out of operational time, then add tomorrow's date to unavailable dates if so
-        // 9 PM of currentDate
-        $now = Carbon::now();
-
-        // Today's order time limit
-        $curDateFourPM = Carbon::today()->addHours(16);
-        if ($now->gt($curDateFourPM)) {
-            array_push($dates, $now->format('Y-m-d'));
-        }
-        // Tomorrow's order time limit
-        $curDateNinePM = Carbon::today()->addHours(21);
-        if ($now->gt($curDateNinePM)) {
-            array_push($dates, $now->addDays(1)->format('Y-m-d'));
-        }
-
-        $days = [];
-
-        for ($i = 0; $i <= $dayDiff; $i++) {
-            array_push($days, ["booking_date" => Carbon::today()->addDays($i)->format("Y-m-d")]);
-        }
-
-        $dayCollection = collect($days);
-
-        $availableDatesCollection = $dayCollection->whereNotIn('booking_date', $dates);
-
-        if ($availableDatesCollection->count() === 0) {
-            $nearestDate = $latestDate->addDays(1)->format("Y-m-d");
         } else {
-            $nearestDate = $availableDatesCollection->first()['booking_date'];
+            $nearestDate = Carbon::today()->format("Y-m-d");
+
+            $dateArray = [
+                "unavailable_dates" => [],
+                "nearest_date" => $nearestDate,
+                "ops_hours" => $jamOps
+            ];
         }
-
-        $dateArray = [
-            "unavailable_dates" => $dates,
-            "nearest_date" => $nearestDate,
-            "type" => 2
-        ];
-
         return Response::success($dateArray);
-
-        // Don't forget to only get dates onward from today
     }
 
     //get connection for cross-server queries
