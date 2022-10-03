@@ -183,11 +183,9 @@ class OrderB2CController extends Controller
 
     public function getInvoiceData(Request $request){
         Validate::request($request->all(), [
-            'phone' => 'required',
             'link'  => 'required'
         ]);
 
-        $phone = $request->phone;
         $link = $request->link;
 
         // Read data
@@ -196,10 +194,6 @@ class OrderB2CController extends Controller
             ->where('status', '!=', 6)
             ->with(['customer', 'paket', 'kupon'])
             ->first();
-
-        if(empty($order_b2c) || $order_b2c->customer->phone != $phone){
-            throw new ApplicationException('orders.not_found');
-        }
 
         $ot_order_id = $order_b2c->oper_task_order_id;
         $order_ot = Order::where('idorder', $ot_order_id)
