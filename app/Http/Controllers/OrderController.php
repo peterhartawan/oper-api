@@ -368,14 +368,15 @@ class OrderController extends Controller
                     'kupon_id'              => $kupon_id
                 ];
 
-                // dd($order_b2c_data);
-
                 $new_order_b2c = OrderB2C::create($order_b2c_data);
                 $link = "https://driver.oper.co.id/order-confirmed/" . $new_order_b2c->link;
 
-                // if($kupon_id != null) {
-                //     Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
-                // }
+                $promo_name = "-";
+
+                if ($kupon_id != null) {
+                    $promo_name = Kupon::where('id', $kupon_id)->with(['promo'])->first()->promo->kode;
+                    //     Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
+                }
 
                 // BLAST
 
@@ -409,12 +410,6 @@ class OrderController extends Controller
                     ->first()
                     ->pricing->nama;
 
-                // $paketText = "8 Jam";
-                // if ($service_type_id == 1)
-                //     $paketText = "12 Jam";
-                // if ($service_type_id == 2)
-                //     $paketText = "4 Jam";
-
                 $luarKotaText = "Tidak";
                 if ($local_city == 0) {
                     $luarKotaText = "Ya";
@@ -428,6 +423,90 @@ class OrderController extends Controller
                     str_replace("\n", ". ", "$request->message") :
                     "Tidak ada catatan.";
 
+                $qontakMessageBody =
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "kode_booking",
+                            "value_text" => $trxId
+                        ],
+                        [
+                            "key" => "2",
+                            "value" => "nama",
+                            "value_text" => $request->user_fullname
+                        ],
+                        [
+                            "key" => "3",
+                            "value" => "hp",
+                            "value_text" => $request->user_phonenumber
+                        ],
+                        [
+                            "key" => "4",
+                            "value" => "email",
+                            "value_text" => $user_email
+                        ],
+                        [
+                            "key" => "5",
+                            "value" => "gender",
+                            "value_text" => $genderText
+                        ],
+                        [
+                            "key" => "6",
+                            "value" => "merek",
+                            "value_text" => $vehicleBrandName
+                        ],
+                        [
+                            "key" => "7",
+                            "value" => "tipe",
+                            "value_text" => $request->vehicle_type
+                        ],
+                        [
+                            "key" => "8",
+                            "value" => "transmisi",
+                            "value_text" => $request->vehicle_transmission
+                        ],
+                        [
+                            "key" => "9",
+                            "value" => "plat",
+                            "value_text" => $request->client_vehicle_license
+                        ],
+                        [
+                            "key" => "10",
+                            "value" => "alamat",
+                            "value_text" => $request->destination_name
+                        ],
+                        [
+                            "key" => "11",
+                            "value" => "paket",
+                            "value_text" => $paketText
+                        ],
+                        [
+                            "key" => "12",
+                            "value" => "tanggal",
+                            "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                        ],
+                        [
+                            "key" => "13",
+                            "value" => "waktu",
+                            "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                        ],
+                        [
+                            "key" => "14",
+                            "value" => "luar_kota",
+                            "value_text" => $luarKotaText
+                        ],
+                        [
+                            "key" => "15",
+                            "value" => "catatan",
+                            "value_text" => $deskripiText,
+                        ],
+                        [
+                            "key" => "16",
+                            "value" => "kode_kupon",
+                            "value_text" => $promo_name,
+                        ],
+                    ];
+
                 if ($request->user_phonenumber !== '81365972928') {
                     // Mas Obiq
                     $qontakHandler->sendMessage(
@@ -435,83 +514,7 @@ class OrderController extends Controller
                         "6287783109503",
                         "Order Created - Mas Obiq",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "nama",
-                                "value_text" => $request->user_fullname
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "hp",
-                                "value_text" => $request->user_phonenumber
-                            ],
-                            [
-                                "key" => "3",
-                                "value" => "email",
-                                "value_text" => $user_email
-                            ],
-                            [
-                                "key" => "4",
-                                "value" => "gender",
-                                "value_text" => $genderText
-                            ],
-                            [
-                                "key" => "5",
-                                "value" => "merek",
-                                "value_text" => $vehicleBrandName
-                            ],
-                            [
-                                "key" => "6",
-                                "value" => "tipe",
-                                "value_text" => $request->vehicle_type
-                            ],
-                            [
-                                "key" => "7",
-                                "value" => "transmisi",
-                                "value_text" => $request->vehicle_transmission
-                            ],
-                            [
-                                "key" => "8",
-                                "value" => "plat",
-                                "value_text" => $request->client_vehicle_license
-                            ],
-                            [
-                                "key" => "9",
-                                "value" => "alamat",
-                                "value_text" => $request->destination_name
-                            ],
-                            [
-                                "key" => "10",
-                                "value" => "paket",
-                                "value_text" => $paketText
-                            ],
-                            [
-                                "key" => "11",
-                                "value" => "tanggal",
-                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
-                            ],
-                            [
-                                "key" => "12",
-                                "value" => "waktu",
-                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                            ],
-                            [
-                                "key" => "13",
-                                "value" => "luar_kota",
-                                "value_text" => $luarKotaText
-                            ],
-                            [
-                                "key" => "14",
-                                "value" => "asuransi",
-                                "value_text" => "Ya"
-                            ],
-                            [
-                                "key" => "15",
-                                "value" => "catatan",
-                                "value_text" => $deskripiText,
-                            ],
-                        ]
+                        $qontakMessageBody
                     );
                     // Mas Heri
                     $qontakHandler->sendMessage(
@@ -519,83 +522,7 @@ class OrderController extends Controller
                         "6285710664061",
                         "Order Created - Mas Heri",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "nama",
-                                "value_text" => $request->user_fullname
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "hp",
-                                "value_text" => $request->user_phonenumber
-                            ],
-                            [
-                                "key" => "3",
-                                "value" => "email",
-                                "value_text" => $user_email
-                            ],
-                            [
-                                "key" => "4",
-                                "value" => "gender",
-                                "value_text" => $genderText
-                            ],
-                            [
-                                "key" => "5",
-                                "value" => "merek",
-                                "value_text" => $vehicleBrandName
-                            ],
-                            [
-                                "key" => "6",
-                                "value" => "tipe",
-                                "value_text" => $request->vehicle_type
-                            ],
-                            [
-                                "key" => "7",
-                                "value" => "transmisi",
-                                "value_text" => $request->vehicle_transmission
-                            ],
-                            [
-                                "key" => "8",
-                                "value" => "plat",
-                                "value_text" => $request->client_vehicle_license
-                            ],
-                            [
-                                "key" => "9",
-                                "value" => "alamat",
-                                "value_text" => $request->destination_name
-                            ],
-                            [
-                                "key" => "10",
-                                "value" => "paket",
-                                "value_text" => $paketText
-                            ],
-                            [
-                                "key" => "11",
-                                "value" => "tanggal",
-                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
-                            ],
-                            [
-                                "key" => "12",
-                                "value" => "waktu",
-                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                            ],
-                            [
-                                "key" => "13",
-                                "value" => "luar_kota",
-                                "value_text" => $luarKotaText
-                            ],
-                            [
-                                "key" => "14",
-                                "value" => "asuransi",
-                                "value_text" => "Ya"
-                            ],
-                            [
-                                "key" => "15",
-                                "value" => "catatan",
-                                "value_text" => $deskripiText,
-                            ],
-                        ]
+                        $qontakMessageBody
                     );
                     // Mas Wahid
                     $qontakHandler->sendMessage(
@@ -603,83 +530,7 @@ class OrderController extends Controller
                         "628121816441",
                         "Order Created - Mas Wahid",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "nama",
-                                "value_text" => $request->user_fullname
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "hp",
-                                "value_text" => $request->user_phonenumber
-                            ],
-                            [
-                                "key" => "3",
-                                "value" => "email",
-                                "value_text" => $user_email
-                            ],
-                            [
-                                "key" => "4",
-                                "value" => "gender",
-                                "value_text" => $genderText
-                            ],
-                            [
-                                "key" => "5",
-                                "value" => "merek",
-                                "value_text" => $vehicleBrandName
-                            ],
-                            [
-                                "key" => "6",
-                                "value" => "tipe",
-                                "value_text" => $request->vehicle_type
-                            ],
-                            [
-                                "key" => "7",
-                                "value" => "transmisi",
-                                "value_text" => $request->vehicle_transmission
-                            ],
-                            [
-                                "key" => "8",
-                                "value" => "plat",
-                                "value_text" => $request->client_vehicle_license
-                            ],
-                            [
-                                "key" => "9",
-                                "value" => "alamat",
-                                "value_text" => $request->destination_name
-                            ],
-                            [
-                                "key" => "10",
-                                "value" => "paket",
-                                "value_text" => $paketText
-                            ],
-                            [
-                                "key" => "11",
-                                "value" => "tanggal",
-                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
-                            ],
-                            [
-                                "key" => "12",
-                                "value" => "waktu",
-                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                            ],
-                            [
-                                "key" => "13",
-                                "value" => "luar_kota",
-                                "value_text" => $luarKotaText
-                            ],
-                            [
-                                "key" => "14",
-                                "value" => "asuransi",
-                                "value_text" => "Ya"
-                            ],
-                            [
-                                "key" => "15",
-                                "value" => "catatan",
-                                "value_text" => $deskripiText,
-                            ],
-                        ]
+                        $qontakMessageBody
                     );
                     // Mbak Gege
                     $qontakHandler->sendMessage(
@@ -687,83 +538,7 @@ class OrderController extends Controller
                         "6287804085880",
                         "Order Created - Admin",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "nama",
-                                "value_text" => $request->user_fullname
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "hp",
-                                "value_text" => $request->user_phonenumber
-                            ],
-                            [
-                                "key" => "3",
-                                "value" => "email",
-                                "value_text" => $user_email
-                            ],
-                            [
-                                "key" => "4",
-                                "value" => "gender",
-                                "value_text" => $genderText
-                            ],
-                            [
-                                "key" => "5",
-                                "value" => "merek",
-                                "value_text" => $vehicleBrandName
-                            ],
-                            [
-                                "key" => "6",
-                                "value" => "tipe",
-                                "value_text" => $request->vehicle_type
-                            ],
-                            [
-                                "key" => "7",
-                                "value" => "transmisi",
-                                "value_text" => $request->vehicle_transmission
-                            ],
-                            [
-                                "key" => "8",
-                                "value" => "plat",
-                                "value_text" => $request->client_vehicle_license
-                            ],
-                            [
-                                "key" => "9",
-                                "value" => "alamat",
-                                "value_text" => $request->destination_name
-                            ],
-                            [
-                                "key" => "10",
-                                "value" => "paket",
-                                "value_text" => $paketText
-                            ],
-                            [
-                                "key" => "11",
-                                "value" => "tanggal",
-                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
-                            ],
-                            [
-                                "key" => "12",
-                                "value" => "waktu",
-                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                            ],
-                            [
-                                "key" => "13",
-                                "value" => "luar_kota",
-                                "value_text" => $luarKotaText
-                            ],
-                            [
-                                "key" => "14",
-                                "value" => "asuransi",
-                                "value_text" => "Ya"
-                            ],
-                            [
-                                "key" => "15",
-                                "value" => "catatan",
-                                "value_text" => $deskripiText,
-                            ],
-                        ]
+                        $qontakMessageBody
                     );
                 } else {
                     // TESTER
@@ -772,83 +547,7 @@ class OrderController extends Controller
                         "6281365972928",
                         "Order Created - TESTER",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "nama",
-                                "value_text" => $request->user_fullname
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "hp",
-                                "value_text" => $request->user_phonenumber
-                            ],
-                            [
-                                "key" => "3",
-                                "value" => "email",
-                                "value_text" => $user_email
-                            ],
-                            [
-                                "key" => "4",
-                                "value" => "gender",
-                                "value_text" => $genderText
-                            ],
-                            [
-                                "key" => "5",
-                                "value" => "merek",
-                                "value_text" => $vehicleBrandName
-                            ],
-                            [
-                                "key" => "6",
-                                "value" => "tipe",
-                                "value_text" => $request->vehicle_type
-                            ],
-                            [
-                                "key" => "7",
-                                "value" => "transmisi",
-                                "value_text" => $request->vehicle_transmission
-                            ],
-                            [
-                                "key" => "8",
-                                "value" => "plat",
-                                "value_text" => $request->client_vehicle_license
-                            ],
-                            [
-                                "key" => "9",
-                                "value" => "alamat",
-                                "value_text" => $request->destination_name
-                            ],
-                            [
-                                "key" => "10",
-                                "value" => "paket",
-                                "value_text" => $paketText
-                            ],
-                            [
-                                "key" => "11",
-                                "value" => "tanggal",
-                                "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
-                            ],
-                            [
-                                "key" => "12",
-                                "value" => "waktu",
-                                "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                            ],
-                            [
-                                "key" => "13",
-                                "value" => "luar_kota",
-                                "value_text" => $luarKotaText
-                            ],
-                            [
-                                "key" => "14",
-                                "value" => "asuransi",
-                                "value_text" => "Ya"
-                            ],
-                            [
-                                "key" => "15",
-                                "value" => "catatan",
-                                "value_text" => $deskripiText,
-                            ],
-                        ]
+                        $qontakMessageBody
                     );
                 }
             }
