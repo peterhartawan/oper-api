@@ -232,12 +232,6 @@ Route::group([
     Route::get('notification', 'WebNotificationController@webnotification');
 
     Route::group([
-        'prefix' => 'test',
-    ], function () {
-          Route::get('/index', 'TestingController@index');
-    });
-
-    Route::group([
         'prefix' => 'template',
     ], function () {
           Route::post('/template-report', 'TaskTemplateController@tasktemplatereporting');
@@ -332,6 +326,12 @@ Route::group([
         'prefix' => 'otopickup'
     ], function() {
         Route::get('/tracking/{trx_id}', 'OtopickupController@tracking');
+    });
+
+    Route::group([
+        'prefix' => 'test',
+    ], function () {
+          Route::post('/test', 'TestingController@test');
     });
 
     Route::apiResources([

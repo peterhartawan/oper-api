@@ -592,6 +592,7 @@ class OrderController extends Controller
                                 'order created' => auth()->guard('api')->user()->name
                             ],
                         ];
+
                     foreach ($emails as $email) {
                         $email->notify(
                             new OrderNotification($orderan)
@@ -795,11 +796,30 @@ class OrderController extends Controller
 
         // B2C
         if ($identerprise == env('B2C_IDENTERPRISE')) {
+            $polisHandler = new PolisHandler();
+
+            $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
+
+            if ($insuranceResponse != "400") {
+                $polisHandler->cancelInsurance($data_order->trx_id);
+            }
+
             $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
 
             $b2c_order->update([
                 'status'    => 6
             ]);
+        }
+
+        // Insurance
+        if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+            $polisHandler = new PolisHandler();
+
+            $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
+
+            if ($insuranceResponse != "400") {
+                $polisHandler->cancelInsurance($data_order->trx_id);
+            }
         }
 
 
@@ -995,22 +1015,23 @@ class OrderController extends Controller
 
             //assign email pending
             //send email to driver
-            // $user_driver = User::where('id', $request->driver_userid)
-            //                 ->first();
-            // $orderan2     =  [
-            //                     'greeting' => 'Your have an order',
-            //                     'line' => [
-            //                         'Transaction ID' => $data_order->trx_id,
-            //                         'Task' => $taskTemplate->task_template_name,
-            //                         'Vehicle Brand'=> $vehicle_detail->brand_name,
-            //                         'Vehicle Type'=> $data_order->vehicle_type,
-            //                         'Origin'=> $data_order->origin_name,
-            //                         'Destination'=> $data_order->destination_name,
-            //                     ],
-            //                 ];
-            // if ($user_driver){
-            //     $user_driver->notify(new OrderNotification($orderan2));
-            // }
+            $user_driver = User::where('id', $request->driver_userid)
+                ->first();
+            $orderan2     =  [
+                'greeting' => 'Your have an order',
+                'line' => [
+                    'Transaction ID' => $data_order->trx_id,
+                    'Task' => $taskTemplate->task_template_name,
+                    'Vehicle Brand' => $vehicle_detail->brand_name,
+                    'Vehicle Type' => $data_order->vehicle_type,
+                    'Origin' => $data_order->origin_name,
+                    'Destination' => $data_order->destination_name,
+                ],
+            ];
+
+            if ($user_driver){
+                $user_driver->notify(new OrderNotification($orderan2));
+            }
 
             $array = array(
                 'order_idorder' => $data_order->idorder
@@ -2093,6 +2114,7 @@ class OrderController extends Controller
                     $OrderTasks->attachment_url = Storage::url($OrderTasks->attachment_url);
                 }
 
+                // Sequence handling
                 // Otopickup
                 if ($identerprise == env('OP_IDENTERPRISE')) {
                     $qontakHandler = new QontakHandler();
@@ -2203,6 +2225,20 @@ class OrderController extends Controller
                     );
 
                     $detail_order     = $order_connection->where('idorder', $OrderTasks->order_idorder)->first();
+
+                    // Bulanan
+                    if ($identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+                        // Beginning
+                        if ($OrderTasks->sequence == 1) {
+                            $polisHandler = new PolisHandler();
+                            $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
+
+                            if ($insuranceResponse == "400") {
+                                $polisHandler->submitOrderB2B($detail_order);
+                            }
+                        }
+                    }
+
                     // if( $user->idrole == Constant::ROLE_DRIVER) {
                     //     $driver           = Driver::where("users_id",$detail_order->driver_userid)
                     //                         ->update(["is_on_order" => false]);
@@ -2255,6 +2291,8 @@ class OrderController extends Controller
                         ->where('idordertask', $id_nexttask)
                         ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
 
+                    // Enterprise's last task handling
+
                     // B2C
                     if ($identerprise == env('B2C_IDENTERPRISE')) {
                         $b2c_order = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder);
@@ -2282,16 +2320,20 @@ class OrderController extends Controller
                     }
 
                     // Arista
-                    if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE')) {
-                        // Finish insurance order params
-                        $finishParams = [
-                            "trx_id" => $detail_order->trx_id,
-                            "booking_end" => Carbon::now()->format('Y-m-d H:i')
-                        ];
+                    if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+                        $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
 
-                        // Submit Insurance
-                        $polisHandler = new PolisHandler();
-                        $polisHandler->finishOrder($finishParams);
+                        if ($insuranceResponse != "400") {
+                            // Finish insurance order params
+                            $finishParams = [
+                                "trx_id" => $detail_order->trx_id,
+                                "booking_end" => Carbon::now()->format('Y-m-d H:i')
+                            ];
+
+                            // Submit Insurance
+                            $polisHandler = new PolisHandler();
+                            $polisHandler->finishOrder($finishParams);
+                        }
                     }
 
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');

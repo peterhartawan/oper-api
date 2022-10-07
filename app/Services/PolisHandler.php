@@ -15,6 +15,102 @@ use Log;
 
 class PolisHandler {
 
+    public function checkInsurance($trx_id){
+        $client = new Client();
+        $options = [];
+
+        $options["headers"] = [];
+
+        $options["headers"] += [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        ];
+
+        $options["json"] = [
+            "trx_id" => $trx_id
+        ];
+
+        $options["headers"]["Client-Key"] = "1f4eed77b35cf5b7ca8e8d59902846a7";
+
+        try{
+            $response = $client->request(
+                "POST",
+                "https://apps.ezypolis.com/online-helper/public/api/order/check",
+                $options
+            );
+
+            Log::alert('REQUEST_INFO: \n\n URI: https://apps.ezypolis.com/online-helper/public/api/order/check \n\n Body: '.json_encode($trx_id));
+            Log::alert('REQUEST_RESPONSE: '.json_encode((string) $response->getBody()));
+
+            return json_decode((string) $response->getBody());
+
+        }catch(RequestException $e){
+            $response = $e->getResponse();
+
+            // Logging error
+            Log::alert('REQUEST_INFO: \n\n URI: https://apps.ezypolis.com/online-helper/public/api/order/check \n\n Headers: '.json_encode($options));
+            Log::alert('REQUEST_BODY: '.json_encode($trx_id));
+            Log::alert('ERROR_REQUEST: '.Psr7\str($e->getRequest()));
+            Log::alert('ERROR_RESPONSE: '.json_encode($e->getResponse()));
+            Log::alert('ERROR: '. json_encode($e->getMessage()));
+
+            return json_decode(
+                json_encode([
+                    "code" => $e->getResponse()->getStatusCode() ?? "",
+                    "message" => $e->getResponse()->getReasonPhrase() ?? ""
+                ])
+            );
+        }
+    }
+
+    public function cancelInsurance($trx_id){
+        $client = new Client();
+        $options = [];
+
+        $options["headers"] = [];
+
+        $options["headers"] += [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        ];
+
+        $options["json"] = [
+            "trx_id" => $trx_id
+        ];
+
+        $options["headers"]["Client-Key"] = "1f4eed77b35cf5b7ca8e8d59902846a7";
+
+        try{
+            $response = $client->request(
+                "POST",
+                "https://apps.ezypolis.com/online-helper/public/api/order/cancel",
+                $options
+            );
+
+            Log::alert('REQUEST_INFO: \n\n URI: https://apps.ezypolis.com/online-helper/public/api/order/cancel \n\n Body: '.json_encode($trx_id));
+            Log::alert('REQUEST_RESPONSE: '.json_encode((string) $response->getBody()));
+
+            return json_decode((string) $response->getBody());
+
+        }catch(RequestException $e){
+            $response = $e->getResponse();
+
+            // Logging error
+            Log::alert('REQUEST_INFO: \n\n URI: https://apps.ezypolis.com/online-helper/public/api/order/cancel \n\n Headers: '.json_encode($options));
+            Log::alert('REQUEST_BODY: '.json_encode($trx_id));
+            Log::alert('ERROR_REQUEST: '.Psr7\str($e->getRequest()));
+            Log::alert('ERROR_RESPONSE: '.json_encode($e->getResponse()));
+            Log::alert('ERROR: '. json_encode($e->getMessage()));
+
+            return json_decode(
+                json_encode([
+                    "code" => $e->getResponse()->getStatusCode() ?? "",
+                    "message" => $e->getResponse()->getReasonPhrase() ?? ""
+                ])
+            );
+        }
+    }
+
     // Create Insurance B2C
     public function submitOrderB2C($order){
 
