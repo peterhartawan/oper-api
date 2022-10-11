@@ -86,8 +86,12 @@ class OrderB2CController extends Controller
         $driver_id = $user->id;
 
         // Validate is iddriver exist
-        $apply_order = ApplyOrderB2C::where('driver_userid', $driver_id)->first();
-        $apply_count = ApplyOrderB2C::where('driver_userid', $driver_id)->count();
+        $apply_order = ApplyOrderB2C::where('driver_userid', $driver_id)
+            ->where('link', $request->link)
+            ->first();
+        $apply_count = ApplyOrderB2C::where('driver_userid', $driver_id)
+            ->where('link', $request->link)
+            ->count();
 
         if ($apply_count > 0) {
             if($apply_order->sequence == 1)
@@ -96,6 +100,7 @@ class OrderB2CController extends Controller
                 return Response::success(6);
         }
 
+        // Validate order count
         $apply_order = ApplyOrderB2C::where('link', $request->link)
             ->count();
 
