@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Constants\Constant;
 use App\Exceptions\ApplicationException;
+use App\Models\B2C\ApplyOrderB2C;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
 use App\Models\B2C\OrderB2C;
@@ -14,12 +15,102 @@ use App\Services\QontakHandler;
 use DB;
 use App\Services\Response;
 use App\Services\Validate;
+use App\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class OrderB2CController extends Controller
 {
+    /**
+     * For drivers applying to current order
+     * @param [Request] request
+     * @return [json]
+     */
+    public function apply(Request $request)
+    {
+        Validate::request($request->all(), [
+            'link' => 'required|string:40',
+            'phone' => 'required|string'
+        ]);
+
+        $user = User::where('phonenumber', $request->phone)
+            ->first();
+
+        $driver_id = $user->id;
+
+        $apply_order = ApplyOrderB2C::where('link', $request->link)
+            ->count();
+
+        // Validate apply count
+        if ($apply_order >= 3) {
+            return Response::success(3);
+        }
+
+        $sequence = $apply_order + 1;
+
+        DB::beginTransaction();
+        try {
+            ApplyOrderB2C::create([
+                'link' => $request->link,
+                'driver_userid' => $driver_id,
+                'sequence' => $sequence
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return Response::success(3);
+        }
+
+        if ($sequence == 1)
+            return Response::success(4);
+        else
+            return Response::success(2);
+    }
+
+    public function checkApply(Request $request)
+    {
+        Validate::request($request->all(), [
+            'link' => 'required|string:40',
+            'phone' => 'required|string'
+        ]);
+
+        // 2 = waiting list
+        // 3 = full
+        // 4 = empty
+        // 5 = already in first
+        // 6 = already in wait
+
+        $user = User::where('phonenumber', $request->phone)
+            ->first();
+
+        $driver_id = $user->id;
+
+        // Validate is iddriver exist
+        $apply_order = ApplyOrderB2C::where('driver_userid', $driver_id)->first();
+        $apply_count = ApplyOrderB2C::where('driver_userid', $driver_id)->count();
+
+        if ($apply_count > 0) {
+            if($apply_order->sequence == 1)
+                return Response::success(5);
+            else
+                return Response::success(6);
+        }
+
+        $apply_order = ApplyOrderB2C::where('link', $request->link)
+            ->count();
+
+        if ($apply_order >= 3) {
+            return Response::success(3);
+        }
+
+        // Validate apply count
+        if ($apply_order >= 1) {
+            return Response::success(2);
+        }
+
+        return Response::success(4);
+    }
+
     /**
      * Display the specified resource.
      *
@@ -33,10 +124,11 @@ class OrderB2CController extends Controller
         return Response::success($detail);
     }
 
-    public function getLatest($phone){
+    public function getLatest($phone)
+    {
         $customer = CustomerB2C::where('phone', $phone)->first();
 
-        if(empty($customer))
+        if (empty($customer))
             throw new ApplicationException("customers.not_found");
 
         $customer_id = $customer->id;
@@ -46,32 +138,33 @@ class OrderB2CController extends Controller
             ->where('status', '!=', 6)
             ->first();
 
-        if(empty($latestOrderB2C))
+        if (empty($latestOrderB2C))
             throw new ApplicationException("orders.not_found");
 
         return Response::success($latestOrderB2C);
     }
 
-    public function getFormDataByLink($link){
+    public function getFormDataByLink($link)
+    {
         $latestOrderB2C = OrderB2C::latest('id')
             ->where('link', $link)
             ->with(['customer', 'paket'])
             ->first();
 
-        if(empty($latestOrderB2C))
+        if (empty($latestOrderB2C))
             throw new ApplicationException("orders.not_found");
 
         $latestOrderOT = Order::on('mysql')
             ->where('idorder', $latestOrderB2C->oper_task_order_id)
             ->first();
 
-        if(empty($latestOrderOT))
+        if (empty($latestOrderOT))
             throw new ApplicationException("orders.not_found");
 
         $vehicleBrandName = VehicleBrand::where('id', $latestOrderOT->vehicle_brand_id)->first()->brand_name;
 
         $kupon = null;
-        if($latestOrderB2C->kupon_id != null){
+        if ($latestOrderB2C->kupon_id != null) {
             $kupon = Kupon::where('id', $latestOrderB2C->kupon_id)
                 ->with(['promo'])
                 ->first();
@@ -95,16 +188,18 @@ class OrderB2CController extends Controller
             'destination_latitude' => $latestOrderOT->destination_latitude,
             'destination_longitude' => $latestOrderOT->destination_longitude,
             'booking_time' => strval($latestOrderOT->booking_time),
-            'kupon' => $kupon
+            'kupon' => $kupon,
+            'driver_id' => $latestOrderOT->driver_userid
         ];
 
         return Response::success($latestOrder);
     }
 
-    public function getFormDataByPhone($phone){
+    public function getFormDataByPhone($phone)
+    {
         $customer_id = CustomerB2C::where('phone', $phone)->first()->id;
 
-        if(empty($customer_id))
+        if (empty($customer_id))
             throw new ApplicationException("customers.not_found");
 
         $latestOrderB2C = OrderB2C::latest('id')
@@ -112,20 +207,20 @@ class OrderB2CController extends Controller
             ->with(['paket'])
             ->first();
 
-        if(empty($latestOrderB2C))
+        if (empty($latestOrderB2C))
             throw new ApplicationException("orders.not_found");
 
         $latestOrderOT = Order::on('mysql')
             ->where('idorder', $latestOrderB2C->oper_task_order_id)
             ->first();
 
-        if(empty($latestOrderOT))
+        if (empty($latestOrderOT))
             throw new ApplicationException("orders.not_found");
 
         $vehicleBrandName = VehicleBrand::where('id', $latestOrderOT->vehicle_brand_id)->first()->brand_name;
 
         $kupon = null;
-        if($latestOrderB2C->kupon_id != null){
+        if ($latestOrderB2C->kupon_id != null) {
             $kupon = Kupon::where('id', $latestOrderB2C->kupon_id)
                 ->with(['promo'])
                 ->first();
@@ -153,7 +248,8 @@ class OrderB2CController extends Controller
         return Response::success($latestOrder);
     }
 
-    public function cancelOrder(Request $request){
+    public function cancelOrder(Request $request)
+    {
         Validate::request($request->all(), [
             'link'  => 'required'
         ]);
@@ -162,13 +258,13 @@ class OrderB2CController extends Controller
 
         $order = OrderB2C::where('link', $link)->first();
 
-        if(empty($order)){
+        if (empty($order)) {
             throw new ApplicationException("orders.not_found");
         }
 
         DB::commit();
 
-        try{
+        try {
             $canceledOrder = OrderB2C::where('link', $link)
                 ->update([
                     'status' => 5
@@ -181,7 +277,8 @@ class OrderB2CController extends Controller
         }
     }
 
-    public function getInvoiceData(Request $request){
+    public function getInvoiceData(Request $request)
+    {
         Validate::request($request->all(), [
             'link'  => 'required'
         ]);
@@ -200,7 +297,7 @@ class OrderB2CController extends Controller
             ->with(['driver', 'vehicle_branch'])
             ->first();
 
-        if(empty($order_ot)){
+        if (empty($order_ot)) {
             throw new ApplicationException('orders.not_found');
         }
 
@@ -212,7 +309,7 @@ class OrderB2CController extends Controller
         $carbon_paket_end = Carbon::parse($order_b2c->time_start)->addHours($jam_paket);
 
         $overtime = $carbon_paket_end->diffInHours($carbon_time_end, false) + 1;
-        if($carbon_time_end->lt($carbon_paket_end))
+        if ($carbon_time_end->lt($carbon_paket_end))
             $overtime = 0;
 
         $elapsed_interval = $carbon_time_end->diff($carbon_time_start);
@@ -223,7 +320,7 @@ class OrderB2CController extends Controller
         // Rating
         $rating = RatingB2C::where('driver_id', $order_ot->driver->iddriver)->avg('rating');
 
-        if(empty($rating)){
+        if (empty($rating)) {
             $rating = 0;
         }
 
@@ -249,13 +346,13 @@ class OrderB2CController extends Controller
         $formatted_paket_cost = number_format($paket_cost, 0, ",", ".");
 
         $formatted_intercity_cost = "";
-        if($order_b2c->local_city == 0)
+        if ($order_b2c->local_city == 0)
             $formatted_intercity_cost = number_format($intercity_cost, 0, ",", ".");
 
         $formatted_kupon_cost = $order_b2c->kupon != null ? number_format($order_b2c->kupon->promo->potongan_fixed) : "";
 
         $formatted_overtime_cost = 0;
-        if($overtime_cost > 0)
+        if ($overtime_cost > 0)
             $formatted_overtime_cost = number_format($overtime_cost, 0, ",", ".");
 
         $formatted_overall_cost = number_format($overall_cost);
@@ -270,7 +367,8 @@ class OrderB2CController extends Controller
         return Response::success($mail);
     }
 
-    public function beginTracking(Request $request){
+    public function beginTracking(Request $request)
+    {
         Validate::request($request->all(), [
             'id'  => 'required|int'
         ]);
@@ -278,13 +376,13 @@ class OrderB2CController extends Controller
         $customerPhone = Order::where('idorder', $request->id)
             ->first()->user_phonenumber;
 
-        if(empty($customerPhone)){
+        if (empty($customerPhone)) {
             throw new ApplicationException('orders.not_found');
         }
 
         $qontakHandler = new QontakHandler();
         $qontakHandler->sendMessage(
-            "62".$customerPhone,
+            "62" . $customerPhone,
             "Driver Start Tracking",
             Constant::QONTAK_TEMPLATE_DRIVER_START_TRACKING,
             []
@@ -293,7 +391,8 @@ class OrderB2CController extends Controller
         return Response::success();
     }
 
-    public function arrived(Request $request){
+    public function arrived(Request $request)
+    {
         Validate::request($request->all(), [
             'id'  => 'required|int'
         ]);
@@ -301,13 +400,13 @@ class OrderB2CController extends Controller
         $customerPhone = Order::where('idorder', $request->id)
             ->first()->user_phonenumber;
 
-        if(empty($customerPhone)){
+        if (empty($customerPhone)) {
             throw new ApplicationException('orders.not_found');
         }
 
         $qontakHandler = new QontakHandler();
         $qontakHandler->sendMessage(
-            "62".$customerPhone,
+            "62" . $customerPhone,
             "Driver Arrived",
             Constant::QONTAK_TEMPLATE_DRIVER_ARRIVED,
             []
@@ -317,7 +416,8 @@ class OrderB2CController extends Controller
     }
 }
 
-class MyMail {
+class MyMail
+{
     public $order_ot;
     public $order_b2c;
     public $parsed_time_start;

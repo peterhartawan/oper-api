@@ -58,5 +58,4 @@ return [
         'code'          => 42411,
         'status_code'   => 404,
         'message'       => "User hasn't verified OTP yet."]
-    ]
-];
+    ];

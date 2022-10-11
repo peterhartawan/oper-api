@@ -33,6 +33,6 @@ class CreateOrderB2CsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('oper_b2_cs');
+        Schema::dropIfExists('orders');
     }
 }

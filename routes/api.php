@@ -89,6 +89,7 @@ Route::group([
         Route::post('/resend-pin', 'DriverController@resendpin');
         Route::post('/reporting', 'DriverController@orderdriver');
         Route::get('/total-account', 'DriverController@totalAccount');
+        Route::post('/is-exist-b2c', 'DriverController@isExistB2C');
     });
 
     Route::group([
@@ -272,6 +273,8 @@ Route::group([
         Route::post('/invoice', 'OrderB2CController@getInvoiceData');
         Route::post('/begin-tracking', 'OrderB2CController@beginTracking');
         Route::post('/arrived', 'OrderB2CController@arrived');
+        Route::post('/apply', 'OrderB2CController@apply');
+        Route::post('/check-apply', 'OrderB2CController@checkApply');
     });
 
     Route::group([
@@ -287,6 +290,7 @@ Route::group([
     ], function() {
         Route::post('/', 'OTPB2CController@store');
         Route::post('/verify', 'OTPB2CController@verify');
+        Route::post('/verify-driver', 'OTPB2CController@verifyDriver');
         Route::post('/phone', 'OTPB2CController@isPhoneSucceedOTP');
     });
 

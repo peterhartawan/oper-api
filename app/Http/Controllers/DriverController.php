@@ -1130,4 +1130,33 @@ class DriverController extends Controller
 
         return Response::success($report);
     }
+
+    /**
+     * checks if driver exists with given phonenumber
+     *
+     * @return String success
+     */
+    public function isExistB2C(Request $request)
+    {
+        Validate::request($request->all(), [
+            'phone' => 'required'
+        ]);
+
+        $phone = $request->phone;
+
+        $user = User::where('phonenumber', $phone)
+            ->where('client_enterprise_identerprise', env("B2C_IDENTERPRISE"))
+            ->with(['driver_profile'])
+            ->first();
+
+        if(empty($user)){
+            throw new ApplicationException("drivers.driver_with_phone_not_found",["phone" => $phone]);
+        }
+
+        if($user->driver_profile == null){
+            throw new ApplicationException("drivers.driver_with_phone_not_found",["phone" => $phone]);
+        }
+
+        return Response::success($user);
+    }
 }
