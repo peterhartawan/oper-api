@@ -275,6 +275,7 @@ Route::group([
         Route::post('/arrived', 'OrderB2CController@arrived');
         Route::post('/apply', 'OrderB2CController@apply');
         Route::post('/check-apply', 'OrderB2CController@checkApply');
+        Route::post('/waiting-list', 'OrderB2CController@getWaitingList');
     });
 
     Route::group([

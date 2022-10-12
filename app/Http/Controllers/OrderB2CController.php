@@ -25,7 +25,7 @@ class OrderB2CController extends Controller
     /**
      * For drivers applying to current order
      * @param [Request] request
-     * @return [json]
+     * @return [int]    ApplyOrder status
      */
     public function apply(Request $request)
     {
@@ -67,6 +67,11 @@ class OrderB2CController extends Controller
             return Response::success(2);
     }
 
+    /**
+     * For drivers check apply order to current order
+     * @param [Request] request
+     * @return [int]    ApplyOrder status
+     */
     public function checkApply(Request $request)
     {
         Validate::request($request->all(), [
@@ -114,6 +119,37 @@ class OrderB2CController extends Controller
         }
 
         return Response::success(4);
+    }
+
+    /**
+     * Get the waiting list for order with the given link.
+     *
+     * @param [Request] request
+     * @return [json]   ApplyOrder Object
+     */
+    public function getWaitingList(Request $request){
+        Validate::request($request->all(), [
+            'link' => 'required|string:40',
+        ]);
+
+        $driver_userids = ApplyOrderB2C::where('link', $request->link)
+            ->pluck('driver_userid')->toArray();
+
+        $driver_users = User::whereIn('id', $driver_userids)->get();
+
+        array_walk($driver_users, function (&$v, $k) {
+            foreach ($v as $item) {
+                if (!empty($item->profile_picture)) {
+                    $item->profile_picture_url = env('BASE_API') . Storage::url($item->profile_picture);
+                }
+            }
+        });
+
+        if(empty($driver_users)){
+            throw new ApplicationException("orders.not_found");
+        }
+
+        return Response::success($driver_users);
     }
 
     /**
