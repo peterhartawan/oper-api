@@ -17,6 +17,7 @@ use App\Services\Response;
 use App\Services\Validate;
 use App\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -56,6 +57,105 @@ class OrderB2CController extends Controller
                 'driver_userid' => $driver_id,
                 'sequence' => $sequence
             ]);
+
+            if ($sequence == 1) {
+                $qontakHandler = new QontakHandler();
+                $order_b2c = OrderB2C::where('link', $request->link)->first();
+                $order_ot = Order::where('idorder', $order_b2c->oper_task_order_id)->first();
+
+                // Mas Obiq
+                $qontakHandler->sendMessage(
+                    "6287783109503",
+                    "Waiting List",
+                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "kode_booking",
+                            "value_text" => $order_ot->trx_id
+                        ],
+                        [
+                            "key" => "2",
+                            "value" => "nama",
+                            "value_text" => $order_ot->user_fullname
+                        ],
+                        [
+                            "key" => "3",
+                            "value" => "hp",
+                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/087783109503"
+                        ],
+                    ]
+                );
+                // Mas Heri
+                $qontakHandler->sendMessage(
+                    "6285710664061",
+                    "Waiting List",
+                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "kode_booking",
+                            "value_text" => $order_ot->trx_id
+                        ],
+                        [
+                            "key" => "2",
+                            "value" => "nama",
+                            "value_text" => $order_ot->user_fullname
+                        ],
+                        [
+                            "key" => "3",
+                            "value" => "hp",
+                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/085710664061"
+                        ],
+                    ]
+                );
+                // Mas Wahid
+                $qontakHandler->sendMessage(
+                    "628121816441",
+                    "Waiting List",
+                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "kode_booking",
+                            "value_text" => $order_ot->trx_id
+                        ],
+                        [
+                            "key" => "2",
+                            "value" => "nama",
+                            "value_text" => $order_ot->user_fullname
+                        ],
+                        [
+                            "key" => "3",
+                            "value" => "hp",
+                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/08121816441"
+                        ],
+                    ]
+                );
+                // TESTER
+                $qontakHandler->sendMessage(
+                    "6281365972928",
+                    "Waiting List",
+                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "kode_booking",
+                            "value_text" => $order_ot->trx_id
+                        ],
+                        [
+                            "key" => "2",
+                            "value" => "nama",
+                            "value_text" => $order_ot->user_fullname
+                        ],
+                        [
+                            "key" => "3",
+                            "value" => "hp",
+                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/081365972928"
+                        ],
+                    ]
+                );
+            }
         } catch (Exception $e) {
             DB::rollBack();
             return Response::success(3);
@@ -99,7 +199,7 @@ class OrderB2CController extends Controller
             ->count();
 
         if ($apply_count > 0) {
-            if($apply_order->sequence == 1)
+            if ($apply_order->sequence == 1)
                 return Response::success(5);
             else
                 return Response::success(6);
@@ -127,7 +227,8 @@ class OrderB2CController extends Controller
      * @param [Request] request
      * @return [json]   ApplyOrder Object
      */
-    public function getWaitingList(Request $request){
+    public function getWaitingList(Request $request)
+    {
         Validate::request($request->all(), [
             'link' => 'required|string:40',
         ]);
@@ -137,7 +238,14 @@ class OrderB2CController extends Controller
 
         $driver_users = User::whereIn('id', $driver_userids)->get();
 
-        array_walk($driver_users, function (&$v, $k) {
+        $drivers = new Collection();
+
+        foreach ($driver_userids as $driver_userid) {
+            $user = $driver_users->where('id', $driver_userid)->first();
+            $drivers->push($user);
+        }
+
+        array_walk($drivers, function (&$v, $k) {
             foreach ($v as $item) {
                 if (!empty($item->profile_picture)) {
                     $item->profile_picture_url = env('BASE_API') . Storage::url($item->profile_picture);
@@ -145,11 +253,11 @@ class OrderB2CController extends Controller
             }
         });
 
-        if(empty($driver_users)){
+        if (empty($drivers)) {
             throw new ApplicationException("orders.not_found");
         }
 
-        return Response::success($driver_users);
+        return Response::success($drivers);
     }
 
     /**

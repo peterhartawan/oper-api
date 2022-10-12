@@ -396,6 +396,8 @@ class OrderController extends Controller
                     ]
                 );
 
+                // OPS
+
                 $genderText = "Wanita";
                 if ($user_gender == 1)
                     $genderText = "Pria";
@@ -532,11 +534,19 @@ class OrderController extends Controller
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         $qontakMessageBody
                     );
-                    // Mbak Gege
+                    // Admin
                     $qontakHandler->sendMessage(
                         // override this number
                         "6287804085880",
                         "Order Created - Admin",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                    // TESTER
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6281365972928",
+                        "Order Created - TESTER",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         $qontakMessageBody
                     );
@@ -548,6 +558,31 @@ class OrderController extends Controller
                         "Order Created - TESTER",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         $qontakMessageBody
+                    );
+                }
+
+                // DRIVER
+                $driverData = User::where('client_enterprise_identerprise', env('B2C_IDENTERPRISE'))
+                    ->where('idrole', Constant::ROLE_DRIVER)
+                    ->get();
+
+                foreach($driverData as $driver) {
+                    $qontakHandler->sendMessage(
+                        "62" . substr($driver->phonenumber, 1),
+                        "Blast Order",
+                        Constant::QONTAK_TEMPLATE_BLAST_ORDER,
+                        [
+                            [
+                                "key" => "1",
+                                "value" => "nama_driver",
+                                "value_text" => $driver->name,
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "link",
+                                "value_text" => "https://operdriverstaging.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber,
+                            ],
+                        ]
                     );
                 }
             }
@@ -1029,7 +1064,7 @@ class OrderController extends Controller
                 ],
             ];
 
-            if ($user_driver){
+            if ($user_driver) {
                 $user_driver->notify(new OrderNotification($orderan2));
             }
 
