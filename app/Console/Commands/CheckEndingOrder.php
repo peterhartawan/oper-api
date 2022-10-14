@@ -48,22 +48,24 @@ class CheckEndingOrder extends Command
             ->select(
                 // 'orders.time_start',
                 DB::Raw("@estend:=(IF(service_type_id = 1, DATE_ADD(time_start, INTERVAL 120 MINUTE),
-                  IF(service_type_id = 2,
-                   DATE_ADD(time_start, INTERVAL 240 MINUTE),
-                   iF(service_type_id = 3),
-                    DATE_ADD(time_start, INTERVAL 480 MINUTE),
-                    DATE_ADD(time_start, INTERVAL 720 MINUTE)
-                  )
-                 )) as est_end"),
+                    IF(service_type_id = 2,
+                        DATE_ADD(time_start, INTERVAL 240 MINUTE),
+                        iF(service_type_id = 3),
+                            DATE_ADD(time_start, INTERVAL 480 MINUTE),
+                            DATE_ADD(time_start, INTERVAL 720 MINUTE)
+                        )
+                    )
+                ) as est_end"),
                 DB::Raw("@timenow:=(NOW()) as time_now"),
                 DB::Raw("TIMESTAMPDIFF(MINUTE, @timenow, @estend) as time_diff"),
                 DB::Raw("IF(service_type_id = 1, '2 Jam',
-                 IF(service_type_id = 2,
-                  '4 Jam',
-                  IF(service_type_id = 3,
-                    '8 Jam',
-                    '12 Jam'
-                 )
+                    IF(service_type_id = 2,
+                        '4 Jam',
+                        IF(service_type_id = 3,
+                            '8 Jam',
+                            '12 Jam'
+                        )
+                    )
                 ) as pk_name"),
                 'orders.*',
             )

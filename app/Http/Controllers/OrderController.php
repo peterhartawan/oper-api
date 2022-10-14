@@ -832,10 +832,9 @@ class OrderController extends Controller
         // B2C
         if ($identerprise == env('B2C_IDENTERPRISE')) {
             $polisHandler = new PolisHandler();
-
             $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
 
-            if ($insuranceResponse != "400") {
+            if ($insuranceResponse->status != "400") {
                 $polisHandler->cancelInsurance($data_order->trx_id);
             }
 
@@ -852,7 +851,7 @@ class OrderController extends Controller
 
             $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
 
-            if ($insuranceResponse != "400") {
+            if ($insuranceResponse->status != "400") {
                 $polisHandler->cancelInsurance($data_order->trx_id);
             }
         }
@@ -2177,71 +2176,23 @@ class OrderController extends Controller
                             );
 
                             break;
+                    }
+                }
 
-                            // case Constant::OP_CONSULT_SEQUENCE:
-                            //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+                // Begin Insurance Handling
+                if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+                    // Beginning
+                    if ($OrderTasks->sequence == 1) {
+                        $order_connection = $this->switchOrderConnection($identerprise);
 
-                            //     $qontakHandler->sendMessage(
-                            //         "628121816441",
-                            //         "Wahid OPER",
-                            //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                            //         [
-                            //             [
-                            //                 "key"=> "1",
-                            //                 "value"=> "id",
-                            //                 "value_text"=> $trx_id
-                            //             ],
-                            //             [
-                            //                 "key"=> "2",
-                            //                 "value"=> "link",
-                            //                 "value_text"=> "https://otopickup.oper.co.id/status/consult/" . $trx_id
-                            //             ],
-                            //         ]);
+                        $detail_order = $order_connection->where('idorder', $OrderTasks->order_idorder)->first();
 
-                            //     break;
+                        $polisHandler = new PolisHandler();
+                        $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
 
-                            // case Constant::OP_SERVICE_SEQUENCE:
-                            //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
-
-                            //     $qontakHandler->sendMessage(
-                            //         "628121816441",
-                            //         "Wahid OPER",
-                            //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                            //         [
-                            //             [
-                            //                 "key"=> "1",
-                            //                 "value"=> "id",
-                            //                 "value_text"=> $trx_id
-                            //             ],
-                            //             [
-                            //                 "key"=> "2",
-                            //                 "value"=> "link",
-                            //                 "value_text"=> "https://otopickup.oper.co.id/status/service/" . $trx_id
-                            //             ],
-                            //         ]);
-
-                            //     break;
-                            // case Constant::OP_DROPOFF_SEQUENCE:
-                            //     $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
-
-                            //     $qontakHandler->sendMessage(
-                            //         "628121816441",
-                            //         "Wahid OPER",
-                            //         Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                            //         [
-                            //             [
-                            //                 "key"=> "1",
-                            //                 "value"=> "id",
-                            //                 "value_text"=> $trx_id
-                            //             ],
-                            //             [
-                            //                 "key"=> "2",
-                            //                 "value"=> "link",
-                            //                 "value_text"=> "https://otopickup.oper.co.id/status/dropoff/" . $trx_id
-                            //             ],
-                            //         ]);
-
-                            //     break;
+                        if ($insuranceResponse->status == "400") {
+                            $polisHandler->submitOrderB2B($detail_order);
+                        }
                     }
                 }
 
@@ -2260,19 +2211,6 @@ class OrderController extends Controller
                     );
 
                     $detail_order     = $order_connection->where('idorder', $OrderTasks->order_idorder)->first();
-
-                    // Bulanan
-                    if ($identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
-                        // Beginning
-                        if ($OrderTasks->sequence == 1) {
-                            $polisHandler = new PolisHandler();
-                            $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
-
-                            if ($insuranceResponse == "400") {
-                                $polisHandler->submitOrderB2B($detail_order);
-                            }
-                        }
-                    }
 
                     // if( $user->idrole == Constant::ROLE_DRIVER) {
                     //     $driver           = Driver::where("users_id",$detail_order->driver_userid)
@@ -2354,11 +2292,12 @@ class OrderController extends Controller
                         );
                     }
 
-                    // Arista
+                    // Finish Insurance
                     if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+                        $polisHandler = new PolisHandler();
                         $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
 
-                        if ($insuranceResponse != "400") {
+                        if ($insuranceResponse->status != "400") {
                             // Finish insurance order params
                             $finishParams = [
                                 "trx_id" => $detail_order->trx_id,
@@ -2366,7 +2305,6 @@ class OrderController extends Controller
                             ];
 
                             // Submit Insurance
-                            $polisHandler = new PolisHandler();
                             $polisHandler->finishOrder($finishParams);
                         }
                     }

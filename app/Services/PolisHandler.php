@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7;
@@ -172,7 +173,29 @@ class PolisHandler {
             'Accept' => 'application/json'
         ];
 
-        $options["json"] = $order;
+        $insuranceOrder = [
+            "trx_id" => $order->trx_id,
+            "task_template_id" => $order->task_template_task_template_id,
+            "booking_start" => Carbon::now()->format('Y-m-d H:i'),
+            "driver_name" => $order->driver->user->name,
+            "client_vehicle_license" => $order->client_vehicle_license,
+            "user_fullname" => $order->user_fullname,
+            "user_phonenumber" => $order->user_phonenumber,
+            "vehicle_owner" => $order->vehicle_owner,
+            "vehicle_brand_id" => $order->vehicle_branch->brand_name,
+            "vehicle_type" => $order->vehicle_type,
+            "vehicle_year" => $order->vehicle_year,
+            "vehicle_transmission" => $order->vehicle_transmission,
+            "message" => $order->message,
+            "origin_latitude" => $order->origin_latitude,
+            "origin_longitude" => $order->origin_longitude,
+            "origin_name" => $order->origin_name,
+            "destination_latitude" => $order->destination_latitude,
+            "destination_longitude" => $order->destination_longitude,
+            "destination_name" => $order->destination_name,
+        ];
+
+        $options["json"] = $insuranceOrder;
 
         $options["headers"]["Client-Key"] = "1f4eed77b35cf5b7ca8e8d59902846a7";
 
