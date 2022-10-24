@@ -580,7 +580,7 @@ class OrderController extends Controller
                             [
                                 "key" => "2",
                                 "value" => "link",
-                                "value_text" => "https://operdriverstaging.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber,
+                                "value_text" => "https://driver.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber,
                             ],
                         ]
                     );

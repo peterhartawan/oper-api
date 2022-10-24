@@ -334,6 +334,12 @@ Route::group([
     });
 
     Route::group([
+        'prefix' => 'promo'
+    ], function() {
+        Route::post('blast', 'PromoController@blastGenerated');
+    });
+
+    Route::group([
         'prefix' => 'test',
     ], function () {
           Route::post('/test', 'TestingController@test');

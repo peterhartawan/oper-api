@@ -82,7 +82,7 @@ class OrderB2CController extends Controller
                         [
                             "key" => "3",
                             "value" => "hp",
-                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/087783109503"
+                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/087783109503"
                         ],
                     ]
                 );
@@ -105,7 +105,7 @@ class OrderB2CController extends Controller
                         [
                             "key" => "3",
                             "value" => "hp",
-                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/085710664061"
+                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/085710664061"
                         ],
                     ]
                 );
@@ -128,7 +128,7 @@ class OrderB2CController extends Controller
                         [
                             "key" => "3",
                             "value" => "hp",
-                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/08121816441"
+                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/08121816441"
                         ],
                     ]
                 );
@@ -151,7 +151,7 @@ class OrderB2CController extends Controller
                         [
                             "key" => "3",
                             "value" => "hp",
-                            "value_text" => "https://operdriverstaging.oper.co.id/waiting-list/" . $order_b2c->link . "/081365972928"
+                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/081365972928"
                         ],
                     ]
                 );

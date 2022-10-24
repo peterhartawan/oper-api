@@ -146,6 +146,7 @@ class RoleAccess
         "CustomerB2CController" => ["getCustomerByPhone"],
         "KuponController" => ["claim", "getKuponByCustomerId", "getKuponById"],
         "OtopickupController" => ["tracking"],
+        "PromoController" => "all",
         "TestingController" => ["test"]
     ];
 

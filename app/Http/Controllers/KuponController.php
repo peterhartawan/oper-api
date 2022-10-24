@@ -61,6 +61,14 @@ class KuponController extends Controller
             throw new ApplicationException('kupon.already_has_coupon');
         }
 
+        // Check if coupon reached claim limit
+        $kuponAllCount = Kupon::where('promo_id', $promo->id)
+            ->count();
+
+        if($kuponAllCount >= $promo->limit_klaim && $promo->limit_klaim > 0){
+            throw new ApplicationException('kupon.create_kupon_failed');
+        }
+
         // Create new kupon
         try{
             DB::beginTransaction();
