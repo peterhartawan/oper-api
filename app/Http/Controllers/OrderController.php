@@ -846,7 +846,10 @@ class OrderController extends Controller
         }
 
         // Insurance
-        if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+        if ($identerprise == env('ARISTA_IDENTERPRISE')     ||
+            $identerprise == env('OP_IDENTERPRISE')         ||
+            $identerprise == env('B2C_BULANAN_IDENTERPRISE')||
+            $identerprise == env('ACC_IDENTERPRISE')) {
             $polisHandler = new PolisHandler();
 
             $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
@@ -2180,7 +2183,10 @@ class OrderController extends Controller
                 }
 
                 // Begin Insurance Handling
-                if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+                if ($identerprise == env('ARISTA_IDENTERPRISE')     ||
+                    $identerprise == env('OP_IDENTERPRISE')         ||
+                    $identerprise == env('B2C_BULANAN_IDENTERPRISE')||
+                    $identerprise == env('ACC_IDENTERPRISE')) {
                     // Beginning
                     if ($OrderTasks->sequence == 1) {
                         $order_connection = $this->switchOrderConnection($identerprise);
@@ -2293,7 +2299,10 @@ class OrderController extends Controller
                     }
 
                     // Finish Insurance
-                    if ($identerprise == env('ARISTA_IDENTERPRISE') || $identerprise == env('OP_IDENTERPRISE') || $identerprise == env('B2C_BULANAN_IDENTERPRISE')) {
+                    if ($identerprise == env('ARISTA_IDENTERPRISE')     ||
+                        $identerprise == env('OP_IDENTERPRISE')         ||
+                        $identerprise == env('B2C_BULANAN_IDENTERPRISE')||
+                        $identerprise == env('ACC_IDENTERPRISE')) {
                         $polisHandler = new PolisHandler();
                         $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
 

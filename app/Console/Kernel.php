@@ -32,9 +32,18 @@ class Kernel extends ConsoleKernel
         // $schedule->call(function(){
         //     info('called every minute');
         // })->everyMinute()->runInBackground();
+
+        // Check order is ending
         $schedule->command('order:ce')->everyMinute()->runInBackground();
+
+        // Check order rating
         $schedule->command('order:rating')->everyMinute()->runInBackground();
+
+        // Check order for tomorrow
         $schedule->command('order:cft')->dailyAt('20:00')->runInBackground();
+
+        // Check weekly for monthly b2c
+        $schedule->command('monthly:create')->weeklyOn(2, '12:39')->runInBackground();
     }
 
     /**
