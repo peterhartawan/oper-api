@@ -26,9 +26,24 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
-        $schedule->command('tracking:delete')
-        ->dailyAt('00:05')
-        ->timezone('Asia/Jakarta');
+        // $schedule->command('tracking:delete')
+        // ->dailyAt('00:05')
+        // ->timezone('Asia/Jakarta');
+        // $schedule->call(function(){
+        //     info('called every minute');
+        // })->everyMinute()->runInBackground();
+
+        // Check order is ending
+        $schedule->command('order:ce')->everyMinute()->runInBackground();
+
+        // Check order rating
+        $schedule->command('order:rating')->everyMinute()->runInBackground();
+
+        // Check order for tomorrow
+        $schedule->command('order:cft')->dailyAt('20:00')->runInBackground();
+
+        // Check weekly for monthly b2c
+        $schedule->command('monthly:create')->weeklyOn(2, '12:39')->runInBackground();
     }
 
     /**

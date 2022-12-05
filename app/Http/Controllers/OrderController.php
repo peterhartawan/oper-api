@@ -42,7 +42,11 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Helpers\Paginator;
 use App\Http\Helpers\EventLog;
 use App\Models\B2C\CustomerB2C;
+use App\Models\B2C\Kupon;
+use App\Models\B2C\OpsHours;
+use App\Models\B2C\Paket;
 use App\Models\Vehicles;
+use App\Services\PolisHandler;
 use App\Services\QontakHandler;
 
 class OrderController extends Controller
@@ -124,7 +128,7 @@ class OrderController extends Controller
         $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
         $order_connection = $this->switchOrderConnection($identerprise);
 
-        $order = $order_connection->with(["enterprise", "driver", "dispatcher", "order_type", "order_tasks", "task_template", "vehicle_branch"])
+        $order = $order_connection->with(["enterprise", "driver.user", "dispatcher", "order_type", "order_tasks", "task_template", "vehicle_branch"])
             ->where('idorder', $id)->first();
 
         if ($order !== NULL) {
@@ -135,6 +139,18 @@ class OrderController extends Controller
                 $order->is_today_checkin = false;
             } else {
                 $order->is_today_checkin = true;
+            }
+
+            if (!empty($order->driver->user->profile_picture)) {
+                $order->profile_picture = env('BASE_API') . Storage::url($order->driver->user->profile_picture);
+            }
+
+            if (!empty($order->driver->foto_ktp)) {
+                $order->foto_ktp = env('BASE_API') . Storage::url($order->driver->foto_ktp);
+            }
+
+            if (!empty($order->driver->foto_sim)) {
+                $order->foto_sim = env('BASE_API') . Storage::url($order->driver->foto_sim);
             }
         } else {
             $message = 'orders.empty_task';
@@ -169,7 +185,7 @@ class OrderController extends Controller
 
         $identerprise = auth()->guard('api')->user()->client_enterprise_identerprise;
 
-        if($identerprise != env('CARS24_IDENTERPRISE')){
+        if ($identerprise != env('CARS24_IDENTERPRISE')) {
             Validate::request($request->all(), [
                 'origin_latitude'   => "required|string",
                 'origin_longitude'  => "required|string",
@@ -294,7 +310,7 @@ class OrderController extends Controller
             );
 
             //B2C
-            if($identerprise == env('B2C_IDENTERPRISE')){
+            if ($identerprise == env('B2C_IDENTERPRISE')) {
                 // register customer if not exist
                 Validate::request($request->all(), [
                     'service_type_id' => "nullable|integer|digits:1",
@@ -303,11 +319,13 @@ class OrderController extends Controller
                     'stay' => "nullable|integer|digits:1",
                     'user_email' => "required|string",
                     'user_gender' => "nullable|integer|digits:1",
+                    'kupon_id' => "nullable|integer"
                 ]);
                 $service_type_id = $request->service_type_id;
                 $local_city = $request->local_city;
                 $insurance = $request->insurance;
                 $stay = $request->stay;
+                $kupon_id = $request->kupon_id;
                 $user_email = $request->user_email;
                 $user_gender = $request->user_gender;
 
@@ -346,221 +364,227 @@ class OrderController extends Controller
                     'local_city'            => $local_city,
                     'insurance'             => $insurance,
                     'stay'                  => $stay,
-                    'notes'                 => $request->message ?? ""
+                    'notes'                 => $request->message ?? "",
+                    'kupon_id'              => $kupon_id
                 ];
 
-                // dd($order_b2c_data);
+                $new_order_b2c = OrderB2C::create($order_b2c_data);
+                $link = "https://driver.oper.co.id/order-confirmed/" . $new_order_b2c->link;
 
-                OrderB2C::create($order_b2c_data);
+                $promo_name = "-";
+
+                if ($kupon_id != null) {
+                    $promo_name = Kupon::where('id', $kupon_id)->with(['promo'])->first()->promo->kode;
+                    //     Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
+                }
 
                 // BLAST
 
                 // Customer
                 $qontakHandler = new QontakHandler();
+
                 $qontakHandler->sendMessage(
-                    "62".$request->user_phonenumber,
+                    "62" . $request->user_phonenumber,
                     "Order Created",
                     Constant::QONTAK_TEMPLATE_ID_ORDER_CREATED,
-                    []
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "link",
+                            "value_text" => $link
+                        ]
+                    ]
                 );
 
+                // OPS
+
                 $genderText = "Wanita";
-                if($user_gender == 1)
+                if ($user_gender == 1)
                     $genderText = "Pria";
-                if($user_gender == 2)
+                if ($user_gender == 2)
                     $genderText = "Lainnya";
 
                 $vehicleBrandName = VehicleBrand::where('id', $request->vehicle_brand_id)->first()->brand_name;
 
-                $paketText = "9 Jam";
-                if($service_type_id == 1)
-                    $paketText = "12 Jam";
-                if($service_type_id == 2)
-                    $paketText = "4 Jam";
+                $paketText = "";
+                $paketText = Paket::where('id', $service_type_id)
+                    ->with(['pricing'])
+                    ->first()
+                    ->pricing->nama;
 
                 $luarKotaText = "Tidak";
-                if($local_city == 0){
+                if ($local_city == 0) {
                     $luarKotaText = "Ya";
                     $stayText = ", Pulang-Pergi";
-                    if($stay == 1)
+                    if ($stay == 1)
                         $stayText = ", Menginap";
                     $luarKotaText = $luarKotaText . $stayText;
                 }
 
-                $asuransiText = "Tidak";
-                if($insurance == 1)
-                    $asuransiText = "Ya";
+                $deskripiText = $request->message ?
+                    str_replace("\n", ". ", "$request->message") :
+                    "Tidak ada catatan.";
 
-                // Dispatcher
-                $dispatcherB2cHp = auth()->guard('api')->user()->phonenumber;
-                $qontakHandler->sendMessage(
-                    "62".$dispatcherB2cHp,
-                    "Order Created",
-                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                $qontakMessageBody =
                     [
                         [
-                            "key"=> "1",
-                            "value"=> "nama",
-                            "value_text"=> $request->user_fullname
+                            "key" => "1",
+                            "value" => "kode_booking",
+                            "value_text" => $trxId
                         ],
                         [
-                            "key"=> "2",
-                            "value"=> "hp",
-                            "value_text"=> $request->user_phonenumber
+                            "key" => "2",
+                            "value" => "nama",
+                            "value_text" => $request->user_fullname
                         ],
                         [
-                            "key"=> "3",
-                            "value"=> "email",
-                            "value_text"=> $user_email
+                            "key" => "3",
+                            "value" => "hp",
+                            "value_text" => $request->user_phonenumber
                         ],
                         [
-                            "key"=> "4",
-                            "value"=> "gender",
-                            "value_text"=> $genderText
+                            "key" => "4",
+                            "value" => "email",
+                            "value_text" => $user_email
                         ],
                         [
-                            "key"=> "5",
-                            "value"=> "merek",
-                            "value_text"=> $vehicleBrandName
+                            "key" => "5",
+                            "value" => "gender",
+                            "value_text" => $genderText
                         ],
                         [
-                            "key"=> "6",
-                            "value"=> "tipe",
-                            "value_text"=> $request->vehicle_type
+                            "key" => "6",
+                            "value" => "merek",
+                            "value_text" => $vehicleBrandName
                         ],
                         [
-                            "key"=> "7",
-                            "value"=> "transmisi",
-                            "value_text"=> $request->vehicle_transmission
+                            "key" => "7",
+                            "value" => "tipe",
+                            "value_text" => $request->vehicle_type
                         ],
                         [
-                            "key"=> "8",
-                            "value"=> "plat",
-                            "value_text"=> $request->client_vehicle_license
+                            "key" => "8",
+                            "value" => "transmisi",
+                            "value_text" => $request->vehicle_transmission
                         ],
                         [
-                            "key"=> "9",
-                            "value"=> "alamat",
-                            "value_text"=> $request->destination_name
+                            "key" => "9",
+                            "value" => "plat",
+                            "value_text" => $request->client_vehicle_license
                         ],
                         [
-                            "key"=> "10",
-                            "value"=> "paket",
-                            "value_text"=> $paketText
+                            "key" => "10",
+                            "value" => "alamat",
+                            "value_text" => $request->destination_name
                         ],
                         [
-                            "key"=> "11",
-                            "value"=> "tanggal",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
+                            "key" => "11",
+                            "value" => "paket",
+                            "value_text" => $paketText
                         ],
                         [
-                            "key"=> "12",
-                            "value"=> "waktu",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                            "key" => "12",
+                            "value" => "tanggal",
+                            "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
                         ],
                         [
-                            "key"=> "13",
-                            "value"=> "luar_kota",
-                            "value_text"=> $luarKotaText
+                            "key" => "13",
+                            "value" => "waktu",
+                            "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
                         ],
                         [
-                            "key"=> "14",
-                            "value"=> "asuransi",
-                            "value_text"=> $asuransiText
+                            "key" => "14",
+                            "value" => "luar_kota",
+                            "value_text" => $luarKotaText
                         ],
                         [
-                            "key"=> "15",
-                            "value"=> "catatan",
-                            "value_text"=> $request->message ?? "Tidak ada catatan."
-                        ],
-                    ]
-                );
-                // Admin
-                $qontakHandler->sendMessage(
-                    // override this number
-                    "6281365972928",
-                    "Order Created",
-                    Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                    [
-                        [
-                            "key"=> "1",
-                            "value"=> "nama",
-                            "value_text"=> $request->user_fullname
+                            "key" => "15",
+                            "value" => "catatan",
+                            "value_text" => $deskripiText,
                         ],
                         [
-                            "key"=> "2",
-                            "value"=> "hp",
-                            "value_text"=> $request->user_phonenumber
+                            "key" => "16",
+                            "value" => "kode_kupon",
+                            "value_text" => $promo_name,
                         ],
-                        [
-                            "key"=> "3",
-                            "value"=> "email",
-                            "value_text"=> $user_email
-                        ],
-                        [
-                            "key"=> "4",
-                            "value"=> "gender",
-                            "value_text"=> $genderText
-                        ],
-                        [
-                            "key"=> "5",
-                            "value"=> "merek",
-                            "value_text"=> $vehicleBrandName
-                        ],
-                        [
-                            "key"=> "6",
-                            "value"=> "tipe",
-                            "value_text"=> $request->vehicle_type
-                        ],
-                        [
-                            "key"=> "7",
-                            "value"=> "transmisi",
-                            "value_text"=> $request->vehicle_transmission
-                        ],
-                        [
-                            "key"=> "8",
-                            "value"=> "plat",
-                            "value_text"=> $request->client_vehicle_license
-                        ],
-                        [
-                            "key"=> "9",
-                            "value"=> "alamat",
-                            "value_text"=> $request->destination_name
-                        ],
-                        [
-                            "key"=> "10",
-                            "value"=> "paket",
-                            "value_text"=> $paketText
-                        ],
-                        [
-                            "key"=> "11",
-                            "value"=> "tanggal",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('d-m-Y')
-                        ],
-                        [
-                            "key"=> "12",
-                            "value"=> "waktu",
-                            "value_text"=> Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                        ],
-                        [
-                            "key"=> "13",
-                            "value"=> "luar_kota",
-                            "value_text"=> $luarKotaText
-                        ],
-                        [
-                            "key"=> "14",
-                            "value"=> "asuransi",
-                            "value_text"=> $asuransiText
-                        ],
-                        [
-                            "key"=> "15",
-                            "value"=> "catatan",
-                            "value_text"=> $request->message ?? "Tidak ada catatan."
-                        ],
-                    ]
-                );
+                    ];
 
-                // return Response::success($qontakHandler);
+                if ($request->user_phonenumber !== '81365972928') {
+                    // Mas Obiq
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6287783109503",
+                        "Order Created - Mas Obiq",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                    // Mas Heri
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6285710664061",
+                        "Order Created - Mas Heri",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                    // Mas Wahid
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "628121816441",
+                        "Order Created - Mas Wahid",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                    // Admin
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6287804085880",
+                        "Order Created - Admin",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                    // TESTER
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6281365972928",
+                        "Order Created - TESTER",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                } else {
+                    // TESTER
+                    $qontakHandler->sendMessage(
+                        // override this number
+                        "6281365972928",
+                        "Order Created - TESTER",
+                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                        $qontakMessageBody
+                    );
+                }
+
+                // DRIVER
+                $driverData = User::where('client_enterprise_identerprise', env('B2C_IDENTERPRISE'))
+                    ->where('idrole', Constant::ROLE_DRIVER)
+                    ->get();
+
+                foreach($driverData as $driver) {
+                    $qontakHandler->sendMessage(
+                        "62" . substr($driver->phonenumber, 1),
+                        "Blast Order",
+                        Constant::QONTAK_TEMPLATE_BLAST_ORDER,
+                        [
+                            [
+                                "key" => "1",
+                                "value" => "nama_driver",
+                                "value_text" => $driver->name,
+                            ],
+                            [
+                                "key" => "2",
+                                "value" => "link",
+                                "value_text" => "https://driver.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber,
+                            ],
+                        ]
+                    );
+                }
             }
 
             DB::commit();
@@ -603,6 +627,7 @@ class OrderController extends Controller
                                 'order created' => auth()->guard('api')->user()->name
                             ],
                         ];
+
                     foreach ($emails as $email) {
                         $email->notify(
                             new OrderNotification($orderan)
@@ -614,6 +639,9 @@ class OrderController extends Controller
             }
 
             $response = $order_connection->find($order->idorder);
+            if ($identerprise == env('B2C_IDENTERPRISE')) {
+                $response->link = $new_order_b2c->link;
+            }
 
             $array = array(
                 'order_idorder' => $order->idorder
@@ -757,7 +785,7 @@ class OrderController extends Controller
         $identerprise       = $user->client_enterprise_identerprise;
         $order_connection   = $this->switchOrderConnection($identerprise);
 
-        if($identerprise == env('CARS24_IDENTERPRISE')){
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             Validate::request($request->all(), [
                 'idorder'        => "required|integer|exists:cars24.order",
                 'reason_cancel'  => "required|string"
@@ -801,13 +829,35 @@ class OrderController extends Controller
             'updated_by'    => $request->user()->id
         ]);
 
-        // if($identerprise == env('B2C_IDENTERPRISE')){
-        //     $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
+        // B2C
+        if ($identerprise == env('B2C_IDENTERPRISE')) {
+            $polisHandler = new PolisHandler();
+            $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
 
-        //     $b2c_order->update([
-        //         'status'    => 6
-        //     ]);
-        // }
+            if ($insuranceResponse->status != "400") {
+                $polisHandler->cancelInsurance($data_order->trx_id);
+            }
+
+            $b2c_order = OrderB2C::where('oper_task_order_id', $request->idorder);
+
+            $b2c_order->update([
+                'status'    => 6
+            ]);
+        }
+
+        // Insurance
+        if ($identerprise == env('ARISTA_IDENTERPRISE')     ||
+            $identerprise == env('OP_IDENTERPRISE')         ||
+            $identerprise == env('B2C_BULANAN_IDENTERPRISE')||
+            $identerprise == env('ACC_IDENTERPRISE')) {
+            $polisHandler = new PolisHandler();
+
+            $insuranceResponse = $polisHandler->checkInsurance($data_order->trx_id);
+
+            if ($insuranceResponse->status != "400") {
+                $polisHandler->cancelInsurance($data_order->trx_id);
+            }
+        }
 
 
         // $driver             = Driver::where("users_id",$data_order->driver_userid)
@@ -853,7 +903,7 @@ class OrderController extends Controller
         $identerprise       = auth()->guard('api')->user()->client_enterprise_identerprise;
         $order_connection   = $this->switchOrderConnection($identerprise);
 
-        if($identerprise == env('CARS24_IDENTERPRISE')){
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             Validate::request($request->all(), [
                 'idorder'        => "required|integer|exists:cars24.order",
                 'driver_userid'  => "required|integer|exists:users,id"
@@ -987,7 +1037,7 @@ class OrderController extends Controller
             if ($fcmRegIds) {
                 $title           = "New Order #{$data_order->trx_id}";
                 $messagebody     = "You have an order";
-                $clickAction	 = "orderUpdate";
+                $clickAction     = "orderUpdate";
                 $getGenNotif     = Notification::generateNotification($fcmRegIds, $title, $messagebody, $clickAction);
                 $returnsendorder = Notification::sendNotification($getGenNotif);
                 if ($returnsendorder == false) {
@@ -1002,22 +1052,23 @@ class OrderController extends Controller
 
             //assign email pending
             //send email to driver
-            // $user_driver = User::where('id', $request->driver_userid)
-            //                 ->first();
-            // $orderan2     =  [
-            //                     'greeting' => 'Your have an order',
-            //                     'line' => [
-            //                         'Transaction ID' => $data_order->trx_id,
-            //                         'Task' => $taskTemplate->task_template_name,
-            //                         'Vehicle Brand'=> $vehicle_detail->brand_name,
-            //                         'Vehicle Type'=> $data_order->vehicle_type,
-            //                         'Origin'=> $data_order->origin_name,
-            //                         'Destination'=> $data_order->destination_name,
-            //                     ],
-            //                 ];
-            // if ($user_driver){
-            //     $user_driver->notify(new OrderNotification($orderan2));
-            // }
+            $user_driver = User::where('id', $request->driver_userid)
+                ->first();
+            $orderan2     =  [
+                'greeting' => 'Your have an order',
+                'line' => [
+                    'Transaction ID' => $data_order->trx_id,
+                    'Task' => $taskTemplate->task_template_name,
+                    'Vehicle Brand' => $vehicle_detail->brand_name,
+                    'Vehicle Type' => $data_order->vehicle_type,
+                    'Origin' => $data_order->origin_name,
+                    'Destination' => $data_order->destination_name,
+                ],
+            ];
+
+            if ($user_driver) {
+                $user_driver->notify(new OrderNotification($orderan2));
+            }
 
             $array = array(
                 'order_idorder' => $data_order->idorder
@@ -1055,24 +1106,31 @@ class OrderController extends Controller
                 $email->notify(new OrderNotification($orderan));
             }
 
-            // if($identerprise == env('B2C_IDENTERPRISE')){
-            //     $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
-            //         ->update([
-            //             'status' => 1
-            //         ]);
+            if ($identerprise == env('B2C_IDENTERPRISE')) {
+                $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)
+                    ->update([
+                        'status' => 1
+                    ]);
 
-            //     // Blast WA
-            //     // get phonenumber
-            //     $customer_id = OrderB2C::where('oper_task_order_id', $request->idorder)->customer_id;
-            //     $phone = CustomerB2C::where('id', $customer_id)->phone;
-            //     $qontakHandler = new QontakHandler();
-            //     $qontakHandler->sendMessage(
-            //         "62".$phone,
-            //         "DRIVER ASSIGNED",
-            //         Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
-            //         []
-            //     );
-            // }
+                // Blast WA
+                $orderb2c = OrderB2C::where('oper_task_order_id', $request->idorder)->first();
+                $customer_id = $orderb2c->customer_id;
+                $link = "https://driver.oper.co.id/dashboard/" . $orderb2c->link;
+                $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+                $qontakHandler = new QontakHandler();
+                $qontakHandler->sendMessage(
+                    "62" . $phone,
+                    "DRIVER ASSIGNED",
+                    Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
+                    [
+                        [
+                            "key" => "1",
+                            "value" => "link",
+                            "value_text" => $link
+                        ],
+                    ]
+                );
+            }
 
             return Response::success($order->first());
         } catch (Exception $e) {
@@ -1307,7 +1365,7 @@ class OrderController extends Controller
         if ($export == Constant::BOOLEAN_TRUE) {
             if (!empty($month)) {
                 $file_name = "Order_export" . $order_status . "-" . $month . ".xlsx";
-                if($idvendor == env('OLX_IDVENDOR')){
+                if ($idvendor == env('OLX_IDVENDOR')) {
                     Excel::store(new OrdersExportFromView($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
                 } else {
                     Excel::store(new OrdersExport($month, $order_status, $AgoDate, $NowDate, $user, $enterprise_name, $driver_name, $export, $week, $date, $vendor, $trxId, $from, $to, $user->idrole), '/public/file/' . $file_name);
@@ -1337,27 +1395,30 @@ class OrderController extends Controller
 
         //select
         $order->with([
-                'vehicle_branch' => function($query){
-                    $query->select('id', 'brand_name as vehicle_brand.brand_name');
-                },
-                'enterprise' => function($query){
-                    $query->select('identerprise', 'name as nama_client_enterprise');
-                },
-                'driver.user' => function($query){
-                        $query->select(
-                            'id',
-                            'name as nama_driver',
-                            'profile_picture',
-                            'profil_picture_2');
-                }
-            ])
+            'vehicle_branch' => function ($query) {
+                $query->select('id', 'brand_name as vehicle_brand.brand_name');
+            },
+            'enterprise' => function ($query) {
+                $query->select('identerprise', 'name as nama_client_enterprise');
+            },
+            'driver.user' => function ($query) {
+                $query->select(
+                    'id',
+                    'name as nama_driver',
+                    'profile_picture',
+                    'profil_picture_2'
+                );
+            }
+        ])
             ->select(
                 'order.*',
                 DB::Raw(
                     "IF(order.order_status = 1, 'Open',
                     IF(order.order_status = 2, 'In Progress',
                     IF(order.order_status = 3, 'Completed',
-                    IF(order.order_status = 5, 'Canceled', 'Unknown')))) as status_text"));
+                    IF(order.order_status = 5, 'Canceled', 'Unknown')))) as status_text"
+                )
+            );
 
         $order = $order->get();
         array_walk($order, function (&$v, $k) {
@@ -1586,7 +1647,7 @@ class OrderController extends Controller
 
             case Constant::ROLE_DISPATCHER_ENTERPRISE_PLUS:
 
-                if($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')){
+                if ($user->client_enterprise_identerprise == env('CARS24_IDENTERPRISE')) {
                     $order_open             = Order::on('cars24')
                         ->where('order.order_status', Constant::ORDER_OPEN)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
@@ -1626,7 +1687,6 @@ class OrderController extends Controller
                         ->where('order.order_status', Constant::ORDER_COMPLETED)
                         ->whereNotIn('order.order_type_idorder_type', [Constant::ORDER_TYPE_ONDEMAND, Constant::ORDER_TYPE_EMPLOYEE])
                         ->where('order.client_enterprise_identerprise', $user->client_enterprise_identerprise);
-
                 } else {
                     $order_open         = DB::table('order')
                         ->where('order.order_status', Constant::ORDER_OPEN)
@@ -1947,7 +2007,7 @@ class OrderController extends Controller
     public function showByTrxId($trxId)
     {
         $user = auth()->guard('api')->user();
-        $order = Order::with(["order_tasks"])->where('trx_id', $trxId);
+        $order = Order::with(["order_tasks", "vehicle_branch"])->where('trx_id', $trxId);
 
         switch ($user->idrole) {
 
@@ -1979,6 +2039,17 @@ class OrderController extends Controller
         }
 
         $detail_order = $order->first();
+
+        $no = 1;
+        array_walk($detail_order->order_tasks, function (&$v, $k) use ($no) {
+            foreach ($v as $item) {
+                $item->no = $no;
+                if (!empty($item->attachment_url)) {
+                    $item->attachment_url = env('BASE_API') . Storage::url($item->attachment_url);
+                }
+            }
+            $no++;
+        });
 
         if (Constant::ORDER_OPEN != $detail_order->order_status) {
             if (!empty($detail_order->driver->user->profile_picture)) {
@@ -2080,6 +2151,57 @@ class OrderController extends Controller
                     $OrderTasks->attachment_url = Storage::url($OrderTasks->attachment_url);
                 }
 
+                // Sequence handling
+                // Otopickup
+                if ($identerprise == env('OP_IDENTERPRISE')) {
+                    $qontakHandler = new QontakHandler();
+
+                    switch ($OrderTasks->sequence) {
+                        case Constant::OP_PICKUP_SEQUENCE:
+                            $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
+
+                            $qontakHandler->sendMessage(
+                                "628121816441",
+                                "Wahid OPER",
+                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                                [
+                                    [
+                                        "key" => "1",
+                                        "value" => "id",
+                                        "value_text" => $trx_id
+                                    ],
+                                    [
+                                        "key" => "2",
+                                        "value" => "link",
+                                        "value_text" => "https://otopickup.oper.co.id/tracking/" . $trx_id
+                                    ],
+                                ]
+                            );
+
+                            break;
+                    }
+                }
+
+                // Begin Insurance Handling
+                if ($identerprise == env('ARISTA_IDENTERPRISE')     ||
+                    $identerprise == env('OP_IDENTERPRISE')         ||
+                    $identerprise == env('B2C_BULANAN_IDENTERPRISE')||
+                    $identerprise == env('ACC_IDENTERPRISE')) {
+                    // Beginning
+                    if ($OrderTasks->sequence == 1) {
+                        $order_connection = $this->switchOrderConnection($identerprise);
+
+                        $detail_order = $order_connection->where('idorder', $OrderTasks->order_idorder)->first();
+
+                        $polisHandler = new PolisHandler();
+                        $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
+
+                        if ($insuranceResponse->status == "400") {
+                            $polisHandler->submitOrderB2B($detail_order);
+                        }
+                    }
+                }
+
                 //cek status all task
                 $check_allstatus = $this->check_allstatustask($OrderTasks->order_idorder, $identerprise);
                 if ($check_allstatus == true) {
@@ -2095,6 +2217,7 @@ class OrderController extends Controller
                     );
 
                     $detail_order     = $order_connection->where('idorder', $OrderTasks->order_idorder)->first();
+
                     // if( $user->idrole == Constant::ROLE_DRIVER) {
                     //     $driver           = Driver::where("users_id",$detail_order->driver_userid)
                     //                         ->update(["is_on_order" => false]);
@@ -2136,14 +2259,65 @@ class OrderController extends Controller
                     $next_task     = $this->switchOrderTasksConnection($identerprise)->where('idordertask', $id_nexttask)
                         ->where('order_idorder', $OrderTasks->order_idorder)
                         ->first();
+
                     if ($id_nexttask == $islastorder->idordertask) {
                         $is_last_order = "true";
                     } else {
                         $is_last_order = "false";
                     }
+
                     $updateTaskselanjutnya = $this->switchOrderTasksConnection($identerprise)->where("order_idorder", $OrderTasks->order_idorder)
                         ->where('idordertask', $id_nexttask)
                         ->update(["order_task_status" => Constant::ORDER_TASK_INPROGRESS]);
+
+                    // Enterprise's last task handling
+
+                    // B2C
+                    if ($identerprise == env('B2C_IDENTERPRISE')) {
+                        $b2c_order = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder);
+
+                        $b2c_order->update([
+                            'status'    => 4
+                        ]);
+
+                        $order_b2c = OrderB2C::where('oper_task_order_id', $OrderTasks->order_idorder)->first();
+
+                        $kupon_id = $order_b2c->kupon_id;
+                        if ($kupon_id != null) {
+                            Kupon::where('id', $kupon_id)->decrement('jumlah_kupon', 1);
+                        }
+
+                        $customer_id = $order_b2c->customer_id;
+                        $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
+                        $qontakHandler = new QontakHandler();
+                        $qontakHandler->sendMessage(
+                            "62" . $phone,
+                            "Order Verified",
+                            Constant::QONTAK_TEMPLATE_VERIFIED,
+                            []
+                        );
+                    }
+
+                    // Finish Insurance
+                    if ($identerprise == env('ARISTA_IDENTERPRISE')     ||
+                        $identerprise == env('OP_IDENTERPRISE')         ||
+                        $identerprise == env('B2C_BULANAN_IDENTERPRISE')||
+                        $identerprise == env('ACC_IDENTERPRISE')) {
+                        $polisHandler = new PolisHandler();
+                        $insuranceResponse = $polisHandler->checkInsurance($detail_order->trx_id);
+
+                        if ($insuranceResponse->status != "400") {
+                            // Finish insurance order params
+                            $finishParams = [
+                                "trx_id" => $detail_order->trx_id,
+                                "booking_end" => Carbon::now()->format('Y-m-d H:i')
+                            ];
+
+                            // Submit Insurance
+                            $polisHandler->finishOrder($finishParams);
+                        }
+                    }
+
                     return Response::success(["is_last_order" => $is_last_order, "next_task" => $next_task], 'orders.complete_order');
                 }
 
@@ -2260,7 +2434,7 @@ class OrderController extends Controller
             case Constant::ROLE_DRIVER:
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format')
-                    ->with(['enterprise', 'task_template' => function ($query){
+                    ->with(['enterprise', 'task_template' => function ($query) {
                         $query->select(['task_template_id', 'task_template_name']);
                     }])
                     ->whereIn('order.order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])
@@ -2271,7 +2445,7 @@ class OrderController extends Controller
             case Constant::ROLE_EMPLOYEE:
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%a| %d %M %Y| %H:%i") as booking_time_format')
-                    ->with(['enterprise', 'task_template' => function ($query){
+                    ->with(['enterprise', 'task_template' => function ($query) {
                         $query->select(['task_template_id', 'task_template_name']);
                     }])
                     ->whereIn('order.order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])
@@ -2294,11 +2468,17 @@ class OrderController extends Controller
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format')
                     ->with([
-                            "order_tasks",
-                            "enterprise" => function($query){$query->select('identerprise', 'name');},
-                            "vehicle_branch" => function($query){$query->select('id', 'brand_name');},
-                            "task_template" => function($query){$query->select('task_template_id', 'task_template_name');}
-                        ])
+                        "order_tasks",
+                        "enterprise" => function ($query) {
+                            $query->select('identerprise', 'name');
+                        },
+                        "vehicle_branch" => function ($query) {
+                            $query->select('id', 'brand_name');
+                        },
+                        "task_template" => function ($query) {
+                            $query->select('task_template_id', 'task_template_name');
+                        }
+                    ])
                     ->where('idorder', $id)
                     ->whereIn('order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])->first();
                 break;
@@ -2307,10 +2487,14 @@ class OrderController extends Controller
                 $order = $order_connection->select('order.*')
                     ->selectRaw('DATE_FORMAT(booking_time, "%W | %d %M %Y | %H:%i") as booking_time_format')
                     ->with([
-                            "order_tasks",
-                            "enterprise" => function($query){$query->select('identerprise', 'name');},
-                            "task_template" => function($query){$query->select('task_template_id', 'task_template_name');}
-                        ])
+                        "order_tasks",
+                        "enterprise" => function ($query) {
+                            $query->select('identerprise', 'name');
+                        },
+                        "task_template" => function ($query) {
+                            $query->select('task_template_id', 'task_template_name');
+                        }
+                    ])
                     ->where('idorder', $id)
                     ->whereIn('order_status', [Constant::ORDER_COMPLETED, Constant::ORDER_CANCELED])->first();
                 break;
@@ -2383,18 +2567,76 @@ class OrderController extends Controller
         return Response::success(["file export" => url($fileexport)]);
     }
 
+    // Get all unavailable dates array
+    public function unavailableDates()
+    {
+        $dates = Order::selectRaw('booking_time, @booking_date:=(DATE(booking_time)) as booking_date, COUNT(@booking_date) as booking_date_count')
+            ->whereDate('booking_time', '>=', Carbon::today())
+            ->where('client_enterprise_identerprise', env("B2C_IDENTERPRISE"))
+            ->groupBy('booking_date')
+            ->orderBy('booking_date', 'desc')
+            ->get();
+
+        // return Response::success(!$dates);
+
+        $jamOps = OpsHours::get();
+
+        if (!$dates) {
+
+            // Nearest date
+            $latestDate = Carbon::parse($dates->first()->booking_date);
+            $todayDate = Carbon::today();
+            $dayDiff = $latestDate->diffInDays($todayDate);
+
+            $dates = $dates->where('booking_date_count', '>=', 10)->pluck('booking_date')->toArray();
+
+            $days = [];
+
+            for ($i = 0; $i <= $dayDiff; $i++) {
+                array_push($days, ["booking_date" => Carbon::today()->addDays($i)->format("Y-m-d")]);
+            }
+
+            $dayCollection = collect($days);
+
+            $availableDatesCollection = $dayCollection->whereNotIn('booking_date', $dates);
+
+            if ($availableDatesCollection->count() === 0) {
+                $nearestDate = $latestDate->addDays(1)->format("Y-m-d");
+            } else {
+                $nearestDate = $availableDatesCollection->first()['booking_date'];
+            }
+
+            $dateArray = [
+                "unavailable_dates" => $dates,
+                "nearest_date" => $nearestDate,
+                "ops_hours" => $jamOps
+            ];
+        } else {
+            $nearestDate = Carbon::today()->format("Y-m-d");
+
+            $dateArray = [
+                "unavailable_dates" => [],
+                "nearest_date" => $nearestDate,
+                "ops_hours" => $jamOps
+            ];
+        }
+        return Response::success($dateArray);
+    }
+
     //get connection for cross-server queries
-    private function switchOrderConnection($identerprise){
+    private function switchOrderConnection($identerprise)
+    {
         $connection = Order::on('mysql');
-        if($identerprise == env('CARS24_IDENTERPRISE')) {
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             $connection = Order::on('cars24');
         }
         return $connection;
     }
 
-    private function switchOrderTasksConnection($identerprise){
+    private function switchOrderTasksConnection($identerprise)
+    {
         $connection = OrderTasks::on('mysql');
-        if($identerprise == env('CARS24_IDENTERPRISE')) {
+        if ($identerprise == env('CARS24_IDENTERPRISE')) {
             $connection = OrderTasks::on('cars24');
         }
         return $connection;

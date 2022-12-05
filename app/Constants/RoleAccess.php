@@ -122,9 +122,9 @@ class RoleAccess
         "UserController" => ["index", "change_password", "update", "me"],
         "PasswordResetController" => "all",
         "ClientEnterpriseController" => ['show'],
-        "DriverController" => ["index", "available_for_order", "orderdriver", "totalAccount"],
+        "DriverController" => ["index", "available_for_order", "orderdriver", "totalAccount", "isExistB2C"],
         "StaticContentController" => ["show", "slug"],
-        "OrderController" => ["cancel", "show_cancel", "cancelorder", "store", "assign", "index", "update", "show", "open", "inprogress", "complete", "show_inprogress", "show_open", "show_complete", "showByTrxId", "template", "orderdriver", "totalorderweek", "totalordermonth", "totalordertoday"],
+        "OrderController" => ["cancel", "show_cancel", "cancelorder", "store", "assign", "index", "update", "show", "open", "inprogress", "complete", "show_inprogress", "show_open", "show_complete", "showByTrxId", "template", "orderdriver", "totalorderweek", "totalordermonth", "totalordertoday", "unavailableDates"],
         "StaticContentController" => ["show"],
         "TaskTemplateController" => ["index", "show", "tasktemplatereporting"],
         "RoleController" => ["access"],
@@ -138,10 +138,16 @@ class RoleAccess
         "ImportController" => ["importOrder"],
         "AttendanceController" => ["show", "reporting"],
         "DriverRequestController" => "all",
-        "OrderB2CController" => ["showByLink", "getLatest", "getFormData", "cancelOrder"],
-        "RatingB2CController" => ["store", "getRatingByDriverId"],
-        "OTPB2CController" => ["store", "verify", "isPhoneSucceedOTP"],
+        "OrderB2CController" => ["apply", "checkApply", "showByLink", "getLatest", "getFormDataByLink", "getFormDataByPhone", "cancelOrder", "getInvoiceData", "getWaitingList"],
+        "RatingB2CController" => ["store", "getRatingByDriverId", "getRatingByLink"],
+        "OTPB2CController" => ["store", "verify", "verifyDriver","isPhoneSucceedOTP"],
+        "PricingB2CController" => ["index"],
+        "PaketB2CController" => ["index"],
         "CustomerB2CController" => ["getCustomerByPhone"],
+        "KuponController" => ["claim", "getKuponByCustomerId", "getKuponById"],
+        "OtopickupController" => ["tracking"],
+        "PromoController" => "all",
+        "TestingController" => ["test"]
     ];
 
     const DISPATCHER_ONDEMAND = [
@@ -166,10 +172,12 @@ class RoleAccess
         "RoleController" => ["access"],
         "TaskTemplateController" => ["index", "show"],
         "OrderController" => ["index", "history", "history_detail", "task", "skip_task", "show"],
+        "OrderB2CController" => ["beginTracking", "arrived"],
         "FaqController" => ["index"],
         "TrackingController" => ["store"],
         "MobileNotificationController" => "all",
-        "MobileCheckUpdateController" => "all"
+        "MobileCheckUpdateController" => "all",
+        "PolisController" => "all"
     ];
 
     const EMPLOYEE = [

@@ -13,14 +13,15 @@ class CreateCustomerB2CsTable extends Migration
      */
     public function up()
     {
-        Schema::create('customer_b2_cs', function (Blueprint $table) {
-            $table->increments('id');
-            $table->string('phone', 15);
-            $table->string('email', 45);
-            $table->string('fullname', 45);
-            $table->int('gender', 1);
-            $table->timestamps();
-        });
+        Schema::connection('b2c')
+            ->create('customers', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('phone', 15);
+                $table->string('email', 45);
+                $table->string('fullname', 45);
+                $table->int('gender', 1);
+                $table->timestamps();
+            });
     }
 
     /**
@@ -30,6 +31,6 @@ class CreateCustomerB2CsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('customer_b2_cs');
+        Schema::connection('b2c')->dropIfExists('customers');
     }
 }

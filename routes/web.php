@@ -16,3 +16,5 @@ use App\Services\Response;
 Route::get('/', function () {
     return Response::success(trans("messages.welcome"));
 });
+
+// Route::get('/testinvoice/{ot_order_id}', 'MailTestController@getMailFromOrder');

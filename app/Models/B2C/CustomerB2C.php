@@ -16,5 +16,6 @@ class CustomerB2C extends Model
         'email',
         'fullname',
         'gender',
+        'is_first_otp'
     ];
 }

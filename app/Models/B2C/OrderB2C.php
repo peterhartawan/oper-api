@@ -26,10 +26,26 @@ class OrderB2C extends Model
         'insurance',
         'stay',
         'notes',
+        'kupon_id',
     ];
 
     public function customer()
 	{
-		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'id');
+		return $this->belongsTo(\App\Models\B2C\CustomerB2C::class, 'customer_id', 'id');
 	}
+
+    public function paket()
+    {
+        return $this->hasOne(\App\Models\B2C\Paket::class, 'id', 'service_type_id')->with(['pricing']);
+    }
+
+    public function rating()
+    {
+        return $this->hasOne(\App\Models\B2C\RatingB2C::class, 'b2c_order_id', 'oper_task_order_id');
+    }
+
+    public function kupon()
+    {
+        return $this->hasOne(\App\Models\B2C\Kupon::class, 'id', 'kupon_id')->with(['promo']);
+    }
 }

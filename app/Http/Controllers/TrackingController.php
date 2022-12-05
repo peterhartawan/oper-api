@@ -61,7 +61,8 @@ class TrackingController extends Controller
     {
         Validate::request($request->all(), [
             'latitude'   => "required|string",
-            'longitude'  => "required|string"
+            'longitude'  => "required|string",
+            'address'    => "nullable|string"
         ]);
 
         $userid = auth()->guard('api')->user()->id;
@@ -138,6 +139,7 @@ class TrackingController extends Controller
                         'latitude'      => $request->latitude,
                         'longitude'     => $request->longitude,
                         'status'        => Constant::STATUS_ACTIVE,
+                        'address'       => $request->address,
                         'created_by'    => $userid,
                         'delay'         => Constant::DELAY_TASK
                     ]);

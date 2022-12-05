@@ -89,6 +89,7 @@ Route::group([
         Route::post('/resend-pin', 'DriverController@resendpin');
         Route::post('/reporting', 'DriverController@orderdriver');
         Route::get('/total-account', 'DriverController@totalAccount');
+        Route::post('/is-exist-b2c', 'DriverController@isExistB2C');
     });
 
     Route::group([
@@ -136,6 +137,7 @@ Route::group([
         Route::get('/total-order-today', 'OrderController@totalordertoday');
         Route::get('/total-order-week', 'OrderController@totalorderweek');
         Route::get('/total-order-month', 'OrderController@totalordermonth');
+        Route::get('/unavailable-dates', 'OrderController@unavailableDates');
         //FOR DRIVER
         Route::get('history/{id}', 'OrderController@history_detail');
         Route::get('history', 'OrderController@history');
@@ -231,12 +233,6 @@ Route::group([
     Route::get('notification', 'WebNotificationController@webnotification');
 
     Route::group([
-        'prefix' => 'test',
-    ], function () {
-          Route::get('/index', 'TestingController@index');
-    });
-
-    Route::group([
         'prefix' => 'template',
     ], function () {
           Route::post('/template-report', 'TaskTemplateController@tasktemplatereporting');
@@ -271,8 +267,15 @@ Route::group([
     ], function() {
         Route::get('/{link}', 'OrderB2CController@showByLink');
         Route::get('/latest/{phone}', 'OrderB2CController@getLatest');
-        Route::get('/form/{phone}', 'OrderB2CController@getFormData');
+        Route::get('/form/phone/{phone}', 'OrderB2CController@getFormDataByPhone');
+        Route::get('/form/link/{link}', 'OrderB2CController@getFormDataByLink');
         Route::post('/cancel', 'OrderB2CController@cancelOrder');
+        Route::post('/invoice', 'OrderB2CController@getInvoiceData');
+        Route::post('/begin-tracking', 'OrderB2CController@beginTracking');
+        Route::post('/arrived', 'OrderB2CController@arrived');
+        Route::post('/apply', 'OrderB2CController@apply');
+        Route::post('/check-apply', 'OrderB2CController@checkApply');
+        Route::post('/waiting-list', 'OrderB2CController@getWaitingList');
     });
 
     Route::group([
@@ -280,6 +283,7 @@ Route::group([
     ], function() {
         Route::post('/', 'RatingB2CController@store');
         Route::get('/driver/{driver_id}', 'RatingB2CController@getRatingByDriverId');
+        Route::get('/link/{link}', 'RatingB2CController@getRatingByLink');
     });
 
     Route::group([
@@ -287,7 +291,20 @@ Route::group([
     ], function() {
         Route::post('/', 'OTPB2CController@store');
         Route::post('/verify', 'OTPB2CController@verify');
+        Route::post('/verify-driver', 'OTPB2CController@verifyDriver');
         Route::post('/phone', 'OTPB2CController@isPhoneSucceedOTP');
+    });
+
+    Route::group([
+        'prefix' => 'pricing'
+    ], function() {
+        Route::get('/', 'PricingB2CController@index');
+    });
+
+    Route::group([
+        'prefix' => 'paket'
+    ], function() {
+        Route::get('/', 'PaketB2CController@index');
     });
 
     Route::group([
@@ -296,6 +313,37 @@ Route::group([
         Route::get('/{phone}', 'CustomerB2CController@getCustomerByPhone');
     });
 
+    Route::group([
+        'prefix' => 'coupon'
+    ], function() {
+        Route::get('/{kupon_id}', 'KuponController@getKuponById');
+        Route::get('/customer/{customer_id}', 'KuponController@getKuponByCustomerId');
+        Route::post('/claim', 'KuponController@claim');
+    });
+
+    Route::group([
+        'prefix' => 'polis'
+    ], function() {
+        Route::post('/submit-b2b', 'PolisController@submitPolisB2B');
+    });
+
+    Route::group([
+        'prefix' => 'otopickup'
+    ], function() {
+        Route::get('/tracking/{trx_id}', 'OtopickupController@tracking');
+    });
+
+    Route::group([
+        'prefix' => 'promo'
+    ], function() {
+        Route::post('blast', 'PromoController@blastGenerated');
+    });
+
+    Route::group([
+        'prefix' => 'test',
+    ], function () {
+          Route::post('/test', 'TestingController@test');
+    });
 
     Route::apiResources([
         'user'              => 'UserController',
