@@ -4,6 +4,7 @@ namespace App\Exports;
 use App\Models\Order;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use App\Constants\Constant;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use DB;
 
@@ -136,10 +137,12 @@ class OrdersExport implements FromCollection,WithHeadings
                 $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id);
             } else {
                 $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id)
-                    ->whereMonth('order.booking_time', $month);
+                    ->whereMonth('order.booking_time', $month)
+                    ->whereYear('order.booking_time', Carbon::now()->year);
             }
         }else if(!empty($this->month)){
-            $order = $order->whereMonth('order.booking_time',$this->month);
+            $order = $order->whereMonth('order.booking_time',$this->month)
+            ->whereYear('order.booking_time', Carbon::now()->year);
         }
 
         if ($this->week == Constant::BOOLEAN_TRUE) {
