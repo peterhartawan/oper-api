@@ -1389,9 +1389,7 @@ class OrderController extends Controller
             $order = $order->whereBetween('order.booking_time', [$from_date, $to_date]);
         }
 
-        if ($order_status == Constant::ORDER_COMPLETED || $order_status == Constant::ORDER_INPROGRESS) {
-            $order = $order->orderBy("order.idorder", "desc");
-        }
+        $order = $order->orderBy("order.idorder", "desc");
 
         //select
         $order->with([
