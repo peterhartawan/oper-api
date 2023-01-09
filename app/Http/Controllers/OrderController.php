@@ -518,19 +518,11 @@ class OrderController extends Controller
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         $qontakMessageBody
                     );
-                    // Mas Heri
+                    // Mas Pulung
                     $qontakHandler->sendMessage(
                         // override this number
-                        "6285710664061",
-                        "Order Created - Mas Heri",
-                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        $qontakMessageBody
-                    );
-                    // Mas Wahid
-                    $qontakHandler->sendMessage(
-                        // override this number
-                        "628121816441",
-                        "Order Created - Mas Wahid",
+                        "628159766379",
+                        "Order Created - Mas Pulung",
                         Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
                         $qontakMessageBody
                     );
@@ -2158,9 +2150,10 @@ class OrderController extends Controller
                         case Constant::OP_PICKUP_SEQUENCE:
                             $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
+                            // Mas Pulung
                             $qontakHandler->sendMessage(
-                                "628121816441",
-                                "Wahid OPER",
+                                "628159766379",
+                                "Mas Pulung",
                                 Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
                                 [
                                     [
@@ -2171,7 +2164,7 @@ class OrderController extends Controller
                                     [
                                         "key" => "2",
                                         "value" => "link",
-                                        "value_text" => "https://otopickup.oper.co.id/tracking/" . $trx_id
+                                        "value_text" => "https://otoklixpickup.oper.co.id/tracking/" . $trx_id
                                     ],
                                 ]
                             );
