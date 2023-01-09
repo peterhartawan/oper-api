@@ -131,7 +131,7 @@ class OrdersExportFromView implements FromView
                 $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id)
                     ->whereMonth('order.booking_time', $month);
             }
-        }else if(!empty($this->month)){
+        } else if(!empty($this->month)){
             $order = $order->whereMonth('order.booking_time',$this->month);
         }
 
@@ -205,6 +205,7 @@ class OrdersExportFromView implements FromView
             $arrOrders[$i]["dispatcher_name"] = $dispatcherNames[$i];
             $arrOrders[$i]["order_type_name"] = $orderTypeNames[$i];
             $arrOrders[$i]["tasks"] = $tasks[$i];
+            $arrOrders[$i]["task_length"] = count($tasks[$i]);
         }
 
         // dd(collect($arrOrders));

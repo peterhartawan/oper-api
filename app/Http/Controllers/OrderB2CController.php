@@ -8,6 +8,7 @@ use App\Models\B2C\ApplyOrderB2C;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
 use App\Models\B2C\OrderB2C;
+use App\Models\B2C\Pricing;
 use App\Models\B2C\RatingB2C;
 use App\Models\Order;
 use App\Models\VehicleBrand;
@@ -86,32 +87,9 @@ class OrderB2CController extends Controller
                         ],
                     ]
                 );
-                // Mas Heri
+                // Mas Pulung
                 $qontakHandler->sendMessage(
-                    "6285710664061",
-                    "Waiting List",
-                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "kode_booking",
-                            "value_text" => $order_ot->trx_id
-                        ],
-                        [
-                            "key" => "2",
-                            "value" => "nama",
-                            "value_text" => $order_ot->user_fullname
-                        ],
-                        [
-                            "key" => "3",
-                            "value" => "hp",
-                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/085710664061"
-                        ],
-                    ]
-                );
-                // Mas Wahid
-                $qontakHandler->sendMessage(
-                    "628121816441",
+                    "628159766379",
                     "Waiting List",
                     Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
                     [
@@ -473,6 +451,9 @@ class OrderB2CController extends Controller
             $rating = 0;
         }
 
+        // Pricing
+        $pricing = Pricing::get();
+
         // Currency Formatting
         $paket_cost = $order_b2c->paket->pricing->harga;
 
@@ -480,14 +461,16 @@ class OrderB2CController extends Controller
         $order_b2c->local_city == 1 ?
             $intercity_cost = 0 :       //Dalam Kota
             ($order_b2c->stay == 1 ?    //Luar Kota
-                $intercity_cost = 200000 :  // Menginap
-                $intercity_cost = 120000);  // PP
+                $intercity_cost = $pricing[6]->harga :  // Menginap
+                $intercity_cost = $pricing[5]->harga);  // PP
 
         // Overtime
-        $overtime_cost = $overtime * 30000;
+        $overtime_cost = $overtime * $pricing[0]->harga;
+
+        $insurance_cost = $order_b2c->insurance == 1 ? $pricing[12]->harga : 0;
 
         // Kupon
-        $cost_no_kupon = $paket_cost + $intercity_cost + $overtime_cost;
+        $cost_no_kupon = $paket_cost + $intercity_cost + $overtime_cost + $insurance_cost;
         $overall_cost = $order_b2c->kupon != null ?
             $cost_no_kupon - $order_b2c->kupon->promo->potongan_fixed :
             $cost_no_kupon;
@@ -504,6 +487,8 @@ class OrderB2CController extends Controller
         if ($overtime_cost > 0)
             $formatted_overtime_cost = number_format($overtime_cost, 0, ",", ".");
 
+        $formatted_insurance_cost = number_format($insurance_cost, 0, ",", ".");
+
         $formatted_overall_cost = number_format($overall_cost);
 
         // Driver photo
@@ -511,7 +496,7 @@ class OrderB2CController extends Controller
             $order_ot->profile_picture = env('BASE_API') . Storage::url($order_ot->driver->user->profile_picture);
         }
 
-        $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_intercity_cost, $formatted_overtime_cost, $formatted_overall_cost, $formatted_kupon_cost);
+        $mail = new MyMail($order_ot, $order_b2c, $carbon_time_start->format('H.i - d F Y'), $carbon_time_end->format('H.i - d F Y'), $overtime, $elapsed_time, $rating, $formatted_paket_cost, $formatted_intercity_cost, $formatted_overtime_cost, $formatted_insurance_cost, $formatted_overall_cost, $formatted_kupon_cost);
 
         return Response::success($mail);
     }
@@ -580,7 +565,7 @@ class MyMail
     public $overall_cost;
     public $kupon_cost;
 
-    public function __construct($order_ot, $order_b2c, $parsed_time_start, $parsed_time_end, $overtime, $elapsed_time, $rating, $paket_cost, $intercity_cost, $overtime_cost, $overall_cost, $kupon_cost)
+    public function __construct($order_ot, $order_b2c, $parsed_time_start, $parsed_time_end, $overtime, $elapsed_time, $rating, $paket_cost, $intercity_cost, $overtime_cost, $insurance_cost, $overall_cost, $kupon_cost)
     {
         $this->order_ot = $order_ot;
         $this->order_b2c = $order_b2c;
@@ -592,6 +577,7 @@ class MyMail
         $this->paket_cost = $paket_cost;
         $this->intercity_cost = $intercity_cost;
         $this->overtime_cost = $overtime_cost;
+        $this->insurance_cost = $insurance_cost;
         $this->overall_cost = $overall_cost;
         $this->kupon_cost = $kupon_cost;
     }

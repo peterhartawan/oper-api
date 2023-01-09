@@ -2,8 +2,8 @@
     <thead>
         <tr>
             <th align="center">ID Order</th>
-            <th align="center">Driver Name</th>
             <th align="center">Dispatcher Name</th>
+            <th align="center">Driver Name</th>
             <th align="center">Booking Time</th>
             <th align="center">Origin Latitude</th>
             <th align="center">Origin Longitude</th>
@@ -18,42 +18,47 @@
             <th align="center">Order Number</th>
             <th align="center">Order Type</th>
             <th align="center">Order Status</th>
-            <th></th>
             <th align="center">Task Descriptions</th>
             <th align="center">Task Images</th>
-    </tr>
+        </tr>
     </thead>
     <tbody>
         @foreach ($orders as $order)
             <tr>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["idorder"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["driver_name"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["dispatcher_name"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["booking_time"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["origin_latitude"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["origin_longitude"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["destination_latitude"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["destination_longitude"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["client_vehicle_license"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["vehicle_brand_id"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["vehicle_type"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["vehicle_transmission"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["vehicle_year"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["message"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["trx_id"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["order_type_name"] }}</td>
-                <td rowspan="{{count($order["tasks"])}}">{{ $order["status_text"] }}</td>
-                <td>1</td>
-                <td>{{ $order["tasks"][0]["description"] }}</td>
-                <td>{{ str_replace("public", "https://rest.oper.co.id/storage", $order["tasks"][0]["attachment_url"]) }}</td>
+                <td>{{ $order['idorder'] }}</td>
+                <td>{{ $order['dispatcher_name'] }}</td>
+                <td>{{ $order['driver_name'] }}</td>
+                <td>{{ $order['booking_time'] }}</td>
+                <td>{{ $order['origin_latitude'] }}</td>
+                <td>{{ $order['origin_longitude'] }}</td>
+                <td>{{ $order['destination_latitude'] }}</td>
+                <td>{{ $order['destination_longitude'] }}</td>
+                <td>{{ $order['client_vehicle_license'] }}</td>
+                <td>{{ $order['vehicle_brand_id'] }}</td>
+                <td>{{ $order['vehicle_type'] }}</td>
+                <td>{{ $order['vehicle_transmission'] }}</td>
+                <td>{{ $order['vehicle_year'] }}</td>
+                <td>{{ $order['message'] }}</td>
+                <td>{{ $order['trx_id'] }}</td>
+                <td>{{ $order['order_type_name'] }}</td>
+                <td>{{ $order['status_text'] }}</td>
+                <td>
+                    @for ($i = 0; $i < $order['task_length']; $i++)
+                        {{ $i + 1 }} - {{ $order['tasks'][$i]['description'] }}@if ($i < $order['task_length'] - 1)
+                            ,
+                        @endif
+                    @endfor
+                </td>
+                <td>
+                    @for ($i = 0; $i < $order['task_length']; $i++)
+                        {{ $i + 1 }} -
+                        {{ str_replace('public', env('BASE_API') . '/storage', $order['tasks'][$i]['attachment_url']) }}
+                        @if ($i < $order['task_length'] - 1)
+                            ,
+                        @endif
+                    @endfor
+                </td>
             </tr>
-            @for ($i = 1; $i < count($order["tasks"]); $i++)
-                <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td>{{ $order["tasks"][$i]["description"] }}</td>
-                    <td>{{ str_replace("public", "https://rest.oper.co.id/storage", $order["tasks"][$i]["attachment_url"]) }}</td>
-                </tr>
-            @endfor
         @endforeach
     </tbody>
 </table>
