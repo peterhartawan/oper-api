@@ -137,12 +137,10 @@ class OrdersExport implements FromCollection,WithHeadings
                 $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id);
             } else {
                 $order = $order->whereIn('client_enterprise_identerprise', $enterprises_user_id)
-                    ->whereMonth('order.booking_time', $month)
-                    ->whereYear('order.booking_time', Carbon::now()->year);
+                    ->whereMonth('order.booking_time', $month);
             }
         }else if(!empty($this->month)){
-            $order = $order->whereMonth('order.booking_time',$this->month)
-            ->whereYear('order.booking_time', Carbon::now()->year);
+            $order = $order->whereMonth('order.booking_time',$this->month);
         }
 
         if ($this->week == Constant::BOOLEAN_TRUE) {
