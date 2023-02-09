@@ -163,6 +163,7 @@ class ReportingDriver implements FromView
                 DATE_FORMAT(`order`.`booking_time`, '%d-%M-%Y') as date,
                 DATE_FORMAT(`order`.`booking_time`, '%H:%i:%s') as time,
                 `order`.`client_vehicle_license`,
+                `order`.`user_fullname`,
                 `order`.`vehicle_type`,
                 `order`.`vehicle_year`,
                 `order`.`origin_name`,

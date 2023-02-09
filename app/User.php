@@ -91,4 +91,8 @@ class User extends Authenticatable
 					->where('idrole', constant::ROLE_DISPATCHER_ENTERPRISE_PLUS);
 	}
 
+    public function attendance()
+    {
+        return $this->hasOne(\App\Attendance::class, 'users_id', 'id');
+    }
 }

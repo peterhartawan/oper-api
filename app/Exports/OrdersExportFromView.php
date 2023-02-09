@@ -120,7 +120,7 @@ class OrdersExportFromView implements FromView
             $order = $order->whereIn('driver_userid', $drivers_user_id);
         }
 
-        if (!empty($this->enterprise_name) ) {
+        if (!empty($this->enterprise_name)) {
             $enterprises_user_id = DB::table('client_enterprise')
                 ->where('name', 'like', '%' . $this->enterprise_name . '%')
                 ->pluck('identerprise')->toArray();
@@ -149,6 +149,7 @@ class OrdersExportFromView implements FromView
         if ($this->order_status == Constant::ORDER_COMPLETED || $this->order_status == Constant::ORDER_INPROGRESS) {
             $order = $order ->orderBy("order.idorder", "desc");
         }
+
         $orders = $order->with([
             'driver.user' => function($query){
                     $query->select(
@@ -192,6 +193,7 @@ class OrdersExportFromView implements FromView
 
         $driverNames = $orders->pluck('driver.user.nama_driver')->toArray();
         $dispatcherNames = $orders->pluck('dispatcher.nama_dispatcher')->toArray();
+        $userFullNames = $orders->pluck('user_fullname')->toArray();
         $orderTypeNames = $orders->pluck('order_type.nama_ordertype')->toArray();
         $tasks = $orders->pluck('order_tasks')->toArray();
 
@@ -203,6 +205,7 @@ class OrdersExportFromView implements FromView
             $arrOrders[$i] = array_slice($arrOrders[$i], 0, 18);
             $arrOrders[$i]["driver_name"] = $driverNames[$i];
             $arrOrders[$i]["dispatcher_name"] = $dispatcherNames[$i];
+            $arrOrders[$i]["user_fullname"] = $userFullNames[$i];
             $arrOrders[$i]["order_type_name"] = $orderTypeNames[$i];
             $arrOrders[$i]["tasks"] = $tasks[$i];
             $arrOrders[$i]["task_length"] = count($tasks[$i]);

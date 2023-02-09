@@ -27,6 +27,7 @@
             <th align="center">Destination SiteName</th>
             <th align="center">Route</th>
             <th align="center">Administrator Name</th>
+            <th align="center">User Customer</th>
             <th align="center">Driver Name</th>
             <th align="center">Pickup Request Time</th>
             @foreach ($tasks as $template_task)
@@ -53,6 +54,7 @@
                     <td >{{ $order['destination_name'] }}</td>
                     <td >{{ $order['route'] }}</td>
                     <td >{{ $order['name_dispatcher'] }}</td>
+                    <td >{{ $order['user_fullname'] }}</td>
                     <td >{{ $order['name_driver'] }}</td>
                     <td >{{ $order['dispatch_time'] }}</td>
 
