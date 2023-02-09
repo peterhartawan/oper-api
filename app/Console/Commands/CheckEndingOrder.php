@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Constants\Constant;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\OrderB2C;
+use App\Services\FonnteServices;
 use App\Services\QontakHandler;
 use Illuminate\Console\Command;
 use DB;
@@ -75,7 +76,8 @@ class CheckEndingOrder extends Command
             ->with(['customer'])
             ->get();
         // Log::info($orders);
-        $qontakHandler = new QontakHandler();
+        // $qontakHandle = new QontakHandler();
+        $fonnteServices = new FonnteServices();
 
         foreach($orders as $order){
             // Reminder ending
@@ -96,17 +98,21 @@ class CheckEndingOrder extends Command
                     case 4:
                         $paket = 12;
                 }
-                $qontakHandler->sendMessage(
-                    "62".$phone,
-                    "Reminder 30min",
-                    Constant::QONTAK_TEMPLATE_REMINDER_30MIN,
-                    [
-                        [
-                            "key"=> "1",
-                            "value"=> "paket",
-                            "value_text"=> $paket
-                        ],
-                    ]
+                // $qontakHandle->sendMessage(
+                //     "62".$phone,
+                //     "Reminder 30min",
+                //     Constant::QONTAK_TEMPLATE_REMINDER_30MIN,
+                //     [
+                //         [
+                //             "key"=> "1",
+                //             "value"=> "paket",
+                //             "value_text"=> $paket
+                //         ],
+                //     ]
+                // );
+                $fonnteServices->sendMessage(
+                    "62" . $phone,
+                    "30 menit lagi, masa layanan " . $paket . " jam OPER Driver Anda habis. Jika tidak diselesaikan, Anda akan memasuki waktu overtime. Yuk, Segera selesaikan perjalanan Anda!"
                 );
             }
             // Reminder overtime
@@ -127,22 +133,26 @@ class CheckEndingOrder extends Command
                     case 4:
                         $paket = 12;
                 }
-                $qontakHandler->sendMessage(
-                    "62".$phone,
-                    "Reminder 30min",
-                    Constant::QONTAK_TEMPLATE_REMINDER_OVERTIME,
-                    [
-                        [
-                            "key"=> "1",
-                            "value"=> "fullname",
-                            "value_text"=> $fullname
-                        ],
-                        [
-                            "key"=> "2",
-                            "value"=> "paket",
-                            "value_text"=> $paket
-                        ],
-                    ]
+                // $qontakHandle->sendMessage(
+                //     "62".$phone,
+                //     "Reminder 30min",
+                //     Constant::QONTAK_TEMPLATE_REMINDER_OVERTIME,
+                //     [
+                //         [
+                //             "key"=> "1",
+                //             "value"=> "fullname",
+                //             "value_text"=> $fullname
+                //         ],
+                //         [
+                //             "key"=> "2",
+                //             "value"=> "paket",
+                //             "value_text"=> $paket
+                //         ],
+                //     ]
+                // );
+                $fonnteServices->sendMessage(
+                    "62" . $phone,
+                    "Hi, " . $fullname . ", masa layanan OPER Driver " . $paket . " jam Anda telah habis. Saat ini, Anda sudah memasuki waktu OVERTIME. Anda akan dikenakan biaya overtime sebesar Rp 30.000/jam."
                 );
             }
         }

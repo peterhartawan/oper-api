@@ -29,6 +29,7 @@ use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\OrderB2C;
 use App\Models\B2C\Pricing;
 use App\Models\Order;
+use App\Services\FonnteServices;
 use App\Services\PolisHandler;
 use App\Services\QontakHandler;
 use Illuminate\Support\Facades\Log;
@@ -189,12 +190,17 @@ class AttendanceController extends Controller
                     }
 
                     // Blast WA
-                    $qontakHandler = new QontakHandler();
-                    $qontakHandler->sendMessage(
+                    // $qontakHandle = new QontakHandler();
+                    $fonnteServices = new FonnteServices();
+                    // $qontakHandle->sendMessage(
+                    //     "62" . $phone,
+                    //     "Order Began",
+                    //     Constant::QONTAK_TEMPLATE_ORDER_BEGAN,
+                    //     []
+                    // );
+                    $fonnteServices->sendMessage(
                         "62" . $phone,
-                        "Order Began",
-                        Constant::QONTAK_TEMPLATE_ORDER_BEGAN,
-                        []
+                        "Layanan Anda sudah dimulai. Mohon refresh halaman dashboard anda. Selamat menikmati perjalanan bersama OPER!"
                     );
                 }
 
@@ -302,23 +308,28 @@ class AttendanceController extends Controller
                     // Customer Blast
                     $customer_id = $order_b2c->customer_id;
                     $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
-                    $qontakHandler = new QontakHandler();
-                    $qontakHandler->sendMessage(
+                    // $qontakHandle = new QontakHandler();
+                    $fonnteServices = new FonnteServices();
+                    // $qontakHandle->sendMessage(
+                    //     "62" . $phone,
+                    //     "Order Ended",
+                    //     Constant::QONTAK_TEMPLATE_PAYMENT,
+                    //     [
+                    //         [
+                    //             "key" => "1",
+                    //             "value" => "rekening",
+                    //             "value_text" => "Rekening BCA PT. Online Helper Internasional : 2916886788"
+                    //         ],
+                    //         [
+                    //             "key" => "2",
+                    //             "value" => "link",
+                    //             "value_text" => "https://driver.oper.co.id/invoice/" . $request_link
+                    //         ],
+                    //     ]
+                    // );
+                    $fonnteServices->sendMessage(
                         "62" . $phone,
-                        "Order Ended",
-                        Constant::QONTAK_TEMPLATE_PAYMENT,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "rekening",
-                                "value_text" => "Rekening BCA PT. Online Helper Internasional : 2916886788"
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "link",
-                                "value_text" => "https://driver.oper.co.id/invoice/" . $request_link
-                            ],
-                        ]
+                        "Layanan OPER Driver Anda sudah selesai. Silakan melakukan pembayaran ke Rekening BCA PT. Online Helper Internasional : 2916886788 dan kirimkan bukti pembayaran via WhatsApp ke Customer Service OPER, untuk verifikasi. Invoice dapat dilihat di link berikut: https://driver.oper.co.id/invoice/" . $request_link
                     );
 
                     // DRIVER BLAST
@@ -399,67 +410,84 @@ class AttendanceController extends Controller
 
                     $formatted_booking_time = Carbon::parse($order_ot->booking_time)->format('d/m/Y, h:i') . " WIB";
 
-                    $qrisBodyMessage = [
-                        [
-                            "key" => "1",
-                            "value" => "nama_driver",
-                            "value_text" => $order_ot->driver->user->name
-                        ],
-                        [
-                            "key" => "2",
-                            "value" => "nama_customer",
-                            "value_text" => $order_ot->user_fullname
-                        ],
-                        [
-                            "key" => "3",
-                            "value" => "booking_time",
-                            "value_text" => $formatted_booking_time
-                        ],
-                        [
-                            "key" => "4",
-                            "value" => "trx_id",
-                            "value_text" => $order_ot->trx_id
-                        ],
-                        [
-                            "key" => "5",
-                            "value" => "jumlah_jam",
-                            "value_text" => $order_b2c->paket->jumlah_jam
-                        ],
-                        [
-                            "key" => "6",
-                            "value" => "biaya_paket",
-                            "value_text" => $formatted_paket_cost
-                        ],
-                        [
-                            "key" => "7",
-                            "value" => "teks_luar_kota",
-                            "value_text" => $lkText
-                        ],
-                        [
-                            "key" => "8",
-                            "value" => "teks_overtime",
-                            "value_text" => $otText
-                        ],
-                        [
-                            "key" => "9",
-                            "value" => "teks_promo",
-                            "value_text" => $promoText
-                        ],
-                        [
-                            "key" => "10",
-                            "value" => "total_biaya",
-                            "value_text" => $formatted_overall_cost
-                        ],
+                    // $qrisBodyMessage = [
+                    //     [
+                    //         "key" => "1",
+                    //         "value" => "nama_driver",
+                    //         "value_text" => $order_ot->driver->user->name
+                    //     ],
+                    //     [
+                    //         "key" => "2",
+                    //         "value" => "nama_customer",
+                    //         "value_text" => $order_ot->user_fullname
+                    //     ],
+                    //     [
+                    //         "key" => "3",
+                    //         "value" => "booking_time",
+                    //         "value_text" => $formatted_booking_time
+                    //     ],
+                    //     [
+                    //         "key" => "4",
+                    //         "value" => "trx_id",
+                    //         "value_text" => $order_ot->trx_id
+                    //     ],
+                    //     [
+                    //         "key" => "5",
+                    //         "value" => "jumlah_jam",
+                    //         "value_text" => $order_b2c->paket->jumlah_jam
+                    //     ],
+                    //     [
+                    //         "key" => "6",
+                    //         "value" => "biaya_paket",
+                    //         "value_text" => $formatted_paket_cost
+                    //     ],
+                    //     [
+                    //         "key" => "7",
+                    //         "value" => "teks_luar_kota",
+                    //         "value_text" => $lkText
+                    //     ],
+                    //     [
+                    //         "key" => "8",
+                    //         "value" => "teks_overtime",
+                    //         "value_text" => $otText
+                    //     ],
+                    //     [
+                    //         "key" => "9",
+                    //         "value" => "teks_promo",
+                    //         "value_text" => $promoText
+                    //     ],
+                    //     [
+                    //         "key" => "10",
+                    //         "value" => "total_biaya",
+                    //         "value_text" => $formatted_overall_cost
+                    //     ],
 
-                    ];
+                    // ];
 
-                    $qontakHandler->sendImageMessage(
+                    // $qontakHandle->sendImageMessage(
+                    //     "62" . $driverPhone,
+                    //     "QRIS",
+                    //     Constant::QONTAK_TEMPLATE_QRIS,
+                    //     "OPER-QRIS",
+                    //     "https://qontak-hub-development.s3.amazonaws.com/uploads/direct/images/31f138f8-8dfb-42c6-9863-871e72e956a1/OPER-QRIS.jpg",
+                    //     $qrisBodyMessage
+                    // );
+
+                    $fonnteServices->sendImageMessage(
                         "62" . $driverPhone,
-                        "QRIS",
-                        Constant::QONTAK_TEMPLATE_QRIS,
-                        "OPER-QRIS",
-                        "https://qontak-hub-development.s3.amazonaws.com/uploads/direct/images/31f138f8-8dfb-42c6-9863-871e72e956a1/OPER-QRIS.jpg",
-                        $qrisBodyMessage
+                        "Halo " . $order_ot->driver->user->name . ",\n\n" .
+                        "Berikut biaya yang harus dibayarkan oleh customer dengan rincian sebagai berikut:\n\n" .
+                        "Nama Pemesan : " . $order_ot->user_fullname . "\n" .
+                        "Waktu Pemesanan : " . $formatted_booking_time . "\n" .
+                        "Kode Pemesanan : " . $order_ot->trx_id . "\n\n" .
+                        "Paket " . $order_b2c->paket->jumlah_jam . " jam : Rp " . $formatted_paket_cost . ",-\n" .
+                        $lkText . "\n" .
+                        $otText . "\n" .
+                        $promoText . "\n" .
+                        "Total: Rp " . $formatted_overall_cost . ",-\n\n" .
+                        "Harap scan kode QR diatas untuk melakukan pembayaran.\n\n" .
+                        "Terima kasih~",
+                        "https://qontak-hub-development.s3.amazonaws.com/uploads/direct/images/31f138f8-8dfb-42c6-9863-871e72e956a1/OPER-QRIS.jpg"
                     );
                 }
 

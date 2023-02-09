@@ -12,6 +12,7 @@ use App\Models\B2C\Pricing;
 use App\Models\B2C\RatingB2C;
 use App\Models\Order;
 use App\Models\VehicleBrand;
+use App\Services\FonnteServices;
 use App\Services\QontakHandler;
 use DB;
 use App\Services\Response;
@@ -60,78 +61,93 @@ class OrderB2CController extends Controller
             ]);
 
             if ($sequence == 1) {
-                $qontakHandler = new QontakHandler();
+                // $qontakHandle = new QontakHandler();
+                $fonnteServices = new FonnteServices();
                 $order_b2c = OrderB2C::where('link', $request->link)->first();
                 $order_ot = Order::where('idorder', $order_b2c->oper_task_order_id)->first();
 
+                // // Mas Obiq
+                // $qontakHandle->sendMessage(
+                //     "6287783109503",
+                //     "Waiting List",
+                //     Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "kode_booking",
+                //             "value_text" => $order_ot->trx_id
+                //         ],
+                //         [
+                //             "key" => "2",
+                //             "value" => "nama",
+                //             "value_text" => $order_ot->user_fullname
+                //         ],
+                //         [
+                //             "key" => "3",
+                //             "value" => "hp",
+                //             "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/087783109503"
+                //         ],
+                //     ]
+                // );
+                // // Mas Pulung
+                // $qontakHandle->sendMessage(
+                //     "628159766379",
+                //     "Waiting List",
+                //     Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "kode_booking",
+                //             "value_text" => $order_ot->trx_id
+                //         ],
+                //         [
+                //             "key" => "2",
+                //             "value" => "nama",
+                //             "value_text" => $order_ot->user_fullname
+                //         ],
+                //         [
+                //             "key" => "3",
+                //             "value" => "hp",
+                //             "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/08121816441"
+                //         ],
+                //     ]
+                // );
+                // // TESTER
+                // $qontakHandle->sendMessage(
+                //     "6281365972928",
+                //     "Waiting List",
+                //     Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "kode_booking",
+                //             "value_text" => $order_ot->trx_id
+                //         ],
+                //         [
+                //             "key" => "2",
+                //             "value" => "nama",
+                //             "value_text" => $order_ot->user_fullname
+                //         ],
+                //         [
+                //             "key" => "3",
+                //             "value" => "hp",
+                //             "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/081365972928"
+                //         ],
+                //     ]
+                // );
                 // Mas Obiq
-                $qontakHandler->sendMessage(
+                $fonnteServices->sendMessage(
                     "6287783109503",
-                    "Waiting List",
-                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "kode_booking",
-                            "value_text" => $order_ot->trx_id
-                        ],
-                        [
-                            "key" => "2",
-                            "value" => "nama",
-                            "value_text" => $order_ot->user_fullname
-                        ],
-                        [
-                            "key" => "3",
-                            "value" => "hp",
-                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/087783109503"
-                        ],
-                    ]
+                    "Dear Team Ops,\nDriver telah menerima pesanan dengan kode booking " . $order_ot->trx_id . ", customer atas nama " . $order_ot->user_fullname . ".\n\nDaftar driver dapat dilihat pada link berikut ini:\nhttps://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/087783109503"
                 );
                 // Mas Pulung
-                $qontakHandler->sendMessage(
+                $fonnteServices->sendMessage(
                     "628159766379",
-                    "Waiting List",
-                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "kode_booking",
-                            "value_text" => $order_ot->trx_id
-                        ],
-                        [
-                            "key" => "2",
-                            "value" => "nama",
-                            "value_text" => $order_ot->user_fullname
-                        ],
-                        [
-                            "key" => "3",
-                            "value" => "hp",
-                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/08121816441"
-                        ],
-                    ]
+                    "Dear Team Ops,\nDriver telah menerima pesanan dengan kode booking " . $order_ot->trx_id . ", customer atas nama " . $order_ot->user_fullname . ".\n\nDaftar driver dapat dilihat pada link berikut ini:\nhttps://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/628159766379"
                 );
-                // TESTER
-                $qontakHandler->sendMessage(
+                $fonnteServices->sendMessage(
                     "6281365972928",
-                    "Waiting List",
-                    Constant::QONTAK_TEMPLATE_BLAST_WAITING_LIST,
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "kode_booking",
-                            "value_text" => $order_ot->trx_id
-                        ],
-                        [
-                            "key" => "2",
-                            "value" => "nama",
-                            "value_text" => $order_ot->user_fullname
-                        ],
-                        [
-                            "key" => "3",
-                            "value" => "hp",
-                            "value_text" => "https://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/081365972928"
-                        ],
-                    ]
+                    "Dear Team Ops,\nDriver telah menerima pesanan dengan kode booking " . $order_ot->trx_id . ", customer atas nama " . $order_ot->user_fullname . ".\n\nDaftar driver dapat dilihat pada link berikut ini:\nhttps://driver.oper.co.id/waiting-list/" . $order_b2c->link . "/6281365972928"
                 );
             }
         } catch (Exception $e) {
@@ -514,12 +530,17 @@ class OrderB2CController extends Controller
             throw new ApplicationException('orders.not_found');
         }
 
-        $qontakHandler = new QontakHandler();
-        $qontakHandler->sendMessage(
+        // $qontakHandle = new QontakHandler();
+        $fonnteServices = new FonnteServices();
+        // $qontakHandle->sendMessage(
+        //     "62" . $customerPhone,
+        //     "Driver Start Tracking",
+        //     Constant::QONTAK_TEMPLATE_DRIVER_START_TRACKING,
+        //     []
+        // );
+        $fonnteServices->sendMessage(
             "62" . $customerPhone,
-            "Driver Start Tracking",
-            Constant::QONTAK_TEMPLATE_DRIVER_START_TRACKING,
-            []
+            "Driver sedang menuju ke lokasi anda. Untuk melihat posisi driver, silahkan refresh halaman dashboard anda. Mohon ditunggu~"
         );
 
         return Response::success();
@@ -538,12 +559,17 @@ class OrderB2CController extends Controller
             throw new ApplicationException('orders.not_found');
         }
 
-        $qontakHandler = new QontakHandler();
-        $qontakHandler->sendMessage(
+        // $qontakHandle = new QontakHandler();
+        $fonnteServices = new FonnteServices();
+        // $qontakHandle->sendMessage(
+        //     "62" . $customerPhone,
+        //     "Driver Arrived",
+        //     Constant::QONTAK_TEMPLATE_DRIVER_ARRIVED,
+        //     []
+        // );
+        $fonnteServices->sendMessage(
             "62" . $customerPhone,
-            "Driver Arrived",
-            Constant::QONTAK_TEMPLATE_DRIVER_ARRIVED,
-            []
+            "Driver sudah sampai di lokasi Anda! Segera scan QR Code untuk memulai layanan kami."
         );
 
         return Response::success();

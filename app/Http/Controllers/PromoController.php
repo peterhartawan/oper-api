@@ -35,7 +35,7 @@ class PromoController extends Controller
         DB::beginTransaction();
 
         try {
-            $qontakHandler = new QontakHandler();
+            // $qontakHandler = new QontakHandler();
 
             // Loop over the request data
             foreach ($request->kupon as $kupon) {
@@ -72,20 +72,20 @@ class PromoController extends Controller
                     ]
                 );
 
-                $qontakHandler->sendImageMessage(
-                    "62" . $kupon["wa"],
-                    "Blast Kupon",
-                    Constant::QONTAK_TEST_IMAGE,
-                    "logo_oper",
-                    "https://rest.oper.co.id/storage/images/test/logo_oper.jpg",
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "kode",
-                            "value_text" => $kupon["kodeKupon"]
-                        ],
-                    ]
-                );
+                // $qontakHandler->sendImageMessage(
+                //     "62" . $kupon["wa"],
+                //     "Blast Kupon",
+                //     Constant::QONTAK_TEST_IMAGE,
+                //     "logo_oper",
+                //     "https://rest.oper.co.id/storage/images/test/logo_oper.jpg",
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "kode",
+                //             "value_text" => $kupon["kodeKupon"]
+                //         ],
+                //     ]
+                // );
             }
         } catch (Exception $e) {
             DB::rollBack();

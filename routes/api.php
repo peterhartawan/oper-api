@@ -345,6 +345,8 @@ Route::group([
           Route::post('/test', 'TestingController@test');
     });
 
+    Route::post('wa-webhook', 'WebhookController@handle_fonnte');
+
     Route::apiResources([
         'user'              => 'UserController',
         'enterprise'        => 'ClientEnterpriseController',

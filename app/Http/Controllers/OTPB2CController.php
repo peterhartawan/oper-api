@@ -12,6 +12,7 @@ use DB;
 use App\Exceptions\ApplicationException;
 use App\Models\B2C\CustomerB2C;
 use App\Models\B2C\Kupon;
+use App\Services\FonnteServices;
 use App\Services\QontakHandler;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -43,19 +44,24 @@ class OTPB2CController extends Controller
             $otp = OTPB2C::create($otp_data);
 
             // BLAST
-            $qontakHandler = new QontakHandler();
+            // $qontakHandle = new QontakHandler();
+            $fonnteServices = new FonnteServices();
 
-            $response = $qontakHandler->sendMessage(
+            // $response = $qontakHandle->sendMessage(
+            //     "62" . $otp->phone,
+            //     "OTP",
+            //     Constant::QONTAK_TEMPLATE_ID_OTP,
+            //     [
+            //         [
+            //             "key" => "1",
+            //             "value" => "otp",
+            //             "value_text" => $otp->code
+            //         ]
+            //     ]
+            // );
+            $response = $fonnteServices->sendMessage(
                 "62" . $otp->phone,
-                "OTP",
-                Constant::QONTAK_TEMPLATE_ID_OTP,
-                [
-                    [
-                        "key" => "1",
-                        "value" => "otp",
-                        "value_text" => $otp->code
-                    ]
-                ]
+                "Hati-hati penipuan! Jangan beri kode ini ke siapapun. Kode OTP OPER: " . $otp->code . ". Berlaku selama 1 menit."
             );
 
             return Response::success($response);

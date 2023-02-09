@@ -46,6 +46,7 @@ use App\Models\B2C\Kupon;
 use App\Models\B2C\OpsHours;
 use App\Models\B2C\Paket;
 use App\Models\Vehicles;
+use App\Services\FonnteServices;
 use App\Services\PolisHandler;
 use App\Services\QontakHandler;
 
@@ -381,19 +382,24 @@ class OrderController extends Controller
                 // BLAST
 
                 // Customer
-                $qontakHandler = new QontakHandler();
+                // $qontakHandle = new QontakHandler();
+                $fonnteServices = new FonnteServices();
 
-                $qontakHandler->sendMessage(
+                // $qontakHandle->sendMessage(
+                //     "62" . $request->user_phonenumber,
+                //     "Order Created",
+                //     Constant::QONTAK_TEMPLATE_ID_ORDER_CREATED,
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "link",
+                //             "value_text" => $link
+                //         ]
+                //     ]
+                // );
+                $fonnteServices->sendMessage(
                     "62" . $request->user_phonenumber,
-                    "Order Created",
-                    Constant::QONTAK_TEMPLATE_ID_ORDER_CREATED,
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "link",
-                            "value_text" => $link
-                        ]
-                    ]
+                    "Pesanan Anda sudah kami terima!\nCek lebih lengkap disini! " . $link . "\n\nSaat ini kami sedang mencari driver untuk Anda. Mohon tunggu sebentar."
                 );
 
                 // OPS
@@ -425,158 +431,230 @@ class OrderController extends Controller
                     str_replace("\n", ". ", "$request->message") :
                     "Tidak ada catatan.";
 
-                $qontakMessageBody =
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "kode_booking",
-                            "value_text" => $trxId
-                        ],
-                        [
-                            "key" => "2",
-                            "value" => "nama",
-                            "value_text" => $request->user_fullname
-                        ],
-                        [
-                            "key" => "3",
-                            "value" => "hp",
-                            "value_text" => $request->user_phonenumber
-                        ],
-                        [
-                            "key" => "4",
-                            "value" => "email",
-                            "value_text" => $user_email
-                        ],
-                        [
-                            "key" => "5",
-                            "value" => "gender",
-                            "value_text" => $genderText
-                        ],
-                        [
-                            "key" => "6",
-                            "value" => "merek",
-                            "value_text" => $vehicleBrandName
-                        ],
-                        [
-                            "key" => "7",
-                            "value" => "tipe",
-                            "value_text" => $request->vehicle_type
-                        ],
-                        [
-                            "key" => "8",
-                            "value" => "transmisi",
-                            "value_text" => $request->vehicle_transmission
-                        ],
-                        [
-                            "key" => "9",
-                            "value" => "plat",
-                            "value_text" => $request->client_vehicle_license
-                        ],
-                        [
-                            "key" => "10",
-                            "value" => "alamat",
-                            "value_text" => $request->destination_name
-                        ],
-                        [
-                            "key" => "11",
-                            "value" => "paket",
-                            "value_text" => $paketText
-                        ],
-                        [
-                            "key" => "12",
-                            "value" => "tanggal",
-                            "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
-                        ],
-                        [
-                            "key" => "13",
-                            "value" => "waktu",
-                            "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
-                        ],
-                        [
-                            "key" => "14",
-                            "value" => "luar_kota",
-                            "value_text" => $luarKotaText
-                        ],
-                        [
-                            "key" => "15",
-                            "value" => "catatan",
-                            "value_text" => $deskripiText,
-                        ],
-                        [
-                            "key" => "16",
-                            "value" => "kode_kupon",
-                            "value_text" => $promo_name,
-                        ],
-                    ];
+                // $qontakMessageBody =
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "kode_booking",
+                //             "value_text" => $trxId
+                //         ],
+                //         [
+                //             "key" => "2",
+                //             "value" => "nama",
+                //             "value_text" => $request->user_fullname
+                //         ],
+                //         [
+                //             "key" => "3",
+                //             "value" => "hp",
+                //             "value_text" => $request->user_phonenumber
+                //         ],
+                //         [
+                //             "key" => "4",
+                //             "value" => "email",
+                //             "value_text" => $user_email
+                //         ],
+                //         [
+                //             "key" => "5",
+                //             "value" => "gender",
+                //             "value_text" => $genderText
+                //         ],
+                //         [
+                //             "key" => "6",
+                //             "value" => "merek",
+                //             "value_text" => $vehicleBrandName
+                //         ],
+                //         [
+                //             "key" => "7",
+                //             "value" => "tipe",
+                //             "value_text" => $request->vehicle_type
+                //         ],
+                //         [
+                //             "key" => "8",
+                //             "value" => "transmisi",
+                //             "value_text" => $request->vehicle_transmission
+                //         ],
+                //         [
+                //             "key" => "9",
+                //             "value" => "plat",
+                //             "value_text" => $request->client_vehicle_license
+                //         ],
+                //         [
+                //             "key" => "10",
+                //             "value" => "alamat",
+                //             "value_text" => $request->destination_name
+                //         ],
+                //         [
+                //             "key" => "11",
+                //             "value" => "paket",
+                //             "value_text" => $paketText
+                //         ],
+                //         [
+                //             "key" => "12",
+                //             "value" => "tanggal",
+                //             "value_text" => Carbon::parse($request->booking_time)->format('d-m-Y')
+                //         ],
+                //         [
+                //             "key" => "13",
+                //             "value" => "waktu",
+                //             "value_text" => Carbon::parse($request->booking_time)->format('H:i') . " WIB"
+                //         ],
+                //         [
+                //             "key" => "14",
+                //             "value" => "luar_kota",
+                //             "value_text" => $luarKotaText
+                //         ],
+                //         [
+                //             "key" => "15",
+                //             "value" => "catatan",
+                //             "value_text" => $deskripiText,
+                //         ],
+                //         [
+                //             "key" => "16",
+                //             "value" => "kode_kupon",
+                //             "value_text" => $promo_name,
+                //         ],
+                //     ];
+
+                $fonnteMessageBody =
+                    "Ada pesanan baru nih!\n\n" .
+                    "Kode Booking - " . $trxId . "\n\n" .
+
+                    "Data Pemesan\n" .
+                    "Nama: " . $request->user_fullname . "\n" .
+                    "Nomor HP: 0" . $request->user_phonenumber . "\n" .
+                    "https://wa.me/62" . $request->user_phonenumber . "\n" .
+                    "Email: " . $user_email . "\n" .
+                    "Gender: " . $genderText . "\n\n" .
+
+                    "Data Kendaraan\n" .
+                    "Merek: " . $vehicleBrandName ."\n" .
+                    "Tipe: " . $request->vehicle_type . "\n" .
+                    "Transmisi: " . $request->vehicle_transmission . "\n" .
+                    "Plat: " . $request->client_vehicle_license . "\n\n" .
+
+                    "Data Pemesanan\n" .
+                    "Alamat: " . $request->destination_name . "\n" .
+                    "Paket: " . $paketText . "\n" .
+                    "Tanggal: " . Carbon::parse($request->booking_time)->format('d-m-Y') . "\n" .
+                    "Waktu: " . Carbon::parse($request->booking_time)->format('H:i') . " WIB\n" .
+                    "Luar Kota: " . $luarKotaText . "\n" .
+                    "Catatan: " . $deskripiText . "\n" .
+                    "Kode Kupon: " . $promo_name . "\n\n" .
+
+                    "Mohon diproses yaa, terima kasih~";
 
                 if ($request->user_phonenumber !== '81365972928') {
                     // Mas Obiq
-                    $qontakHandler->sendMessage(
-                        // override this number
+                    $fonnteServices->sendMessage(
                         "6287783109503",
-                        "Order Created - Mas Obiq",
-                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        $qontakMessageBody
+                        $fonnteMessageBody
                     );
+
+                    sleep(5);
+
                     // Mas Pulung
-                    $qontakHandler->sendMessage(
-                        // override this number
+                    $fonnteServices->sendMessage(
                         "628159766379",
-                        "Order Created - Mas Pulung",
-                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        $qontakMessageBody
+                        $fonnteMessageBody
                     );
+
+                    sleep(5);
+
                     // Admin
-                    $qontakHandler->sendMessage(
-                        // override this number
+                    $fonnteServices->sendMessage(
                         "6287804085880",
-                        "Order Created - Admin",
-                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        $qontakMessageBody
+                        $fonnteMessageBody
                     );
-                    // TESTER
-                    $qontakHandler->sendMessage(
-                        // override this number
-                        "6281365972928",
-                        "Order Created - TESTER",
-                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        $qontakMessageBody
-                    );
+
+                    sleep(5);
+
+                    // // Tester
+                    // $fonnteServices->sendMessage(
+                    //     "6281365972928",
+                    //     $fonnteMessageBody
+                    // );
+
+
+                    // // Mas Obiq
+                    // $qontakHandle->sendMessage(
+                    //     // override this number
+                    //     "6287783109503",
+                    //     "Order Created - Mas Obiq",
+                    //     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    //     $qontakMessageBody
+                    // );
+                    // // Mas Pulung
+                    // $qontakHandle->sendMessage(
+                    //     // override this number
+                    //     "628159766379",
+                    //     "Order Created - Mas Pulung",
+                    //     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    //     $qontakMessageBody
+                    // );
+                    // // Admin
+                    // $qontakHandle->sendMessage(
+                    //     // override this number
+                    //     "6287804085880",
+                    //     "Order Created - Admin",
+                    //     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    //     $qontakMessageBody
+                    // );
+                    // // TESTER
+                    // $qontakHandle->sendMessage(
+                    //     // override this number
+                    //     "6281365972928",
+                    //     "Order Created - TESTER",
+                    //     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    //     $qontakMessageBody
+                    // );
                 } else {
                     // TESTER
-                    $qontakHandler->sendMessage(
-                        // override this number
+                    // $qontakHandle->sendMessage(
+                    //     // override this number
+                    //     "6281365972928",
+                    //     "Order Created - TESTER",
+                    //     Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
+                    //     $qontakMessageBody
+                    // );
+
+                    // Tester
+                    $fonnteServices->sendMessage(
                         "6281365972928",
-                        "Order Created - TESTER",
-                        Constant::QONTAK_TEMPLATE_NOTIF_DISPATCHER_ADMIN,
-                        $qontakMessageBody
+                        $fonnteMessageBody
                     );
                 }
 
-                // DRIVER
-                $driverData = User::where('client_enterprise_identerprise', env('B2C_IDENTERPRISE'))
-                    ->where('idrole', Constant::ROLE_DRIVER)
-                    ->get();
+                // // DRIVER
+                // $driverData = User::where('client_enterprise_identerprise', env('B2C_IDENTERPRISE'))
+                //     ->where('idrole', Constant::ROLE_DRIVER)
+                //     ->get();
 
-                foreach($driverData as $driver) {
-                    $qontakHandler->sendMessage(
-                        "62" . substr($driver->phonenumber, 1),
-                        "Blast Order",
-                        Constant::QONTAK_TEMPLATE_BLAST_ORDER,
-                        [
-                            [
-                                "key" => "1",
-                                "value" => "nama_driver",
-                                "value_text" => $driver->name,
-                            ],
-                            [
-                                "key" => "2",
-                                "value" => "link",
-                                "value_text" => "https://driver.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber,
-                            ],
-                        ]
-                    );
-                }
+                // foreach($driverData as $driver) {
+                //     // $qontakHandle->sendMessage(
+                //     //     "62" . substr($driver->phonenumber, 1),
+                //     //     "Blast Order",
+                //     //     Constant::QONTAK_TEMPLATE_BLAST_ORDER,
+                //     //     [
+                //     //         [
+                //     //             "key" => "1",
+                //     //             "value" => "nama_driver",
+                //     //             "value_text" => $driver->name,
+                //     //         ],
+                //     //         [
+                //     //             "key" => "2",
+                //     //             "value" => "link",
+                //     //             "value_text" => "https://driver.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber,
+                //     //         ],
+                //     //     ]
+                //     // );
+                //     $fonnteServices->sendMessage(
+                //         "62" . substr($driver->phonenumber, 1),
+                //         "Halo " . $driver->name . ",\n\n" .
+
+                //         "Ada pesanan baru nih! Anda dapat mengambil pesanan di link berikut ini:\n" .
+                //         "https://driver.oper.co.id/apply-for-order/" . $new_order_b2c->link . "/" . $driver->phonenumber
+                //     );
+                // }
             }
 
             DB::commit();
@@ -1109,18 +1187,23 @@ class OrderController extends Controller
                 $customer_id = $orderb2c->customer_id;
                 $link = "https://driver.oper.co.id/dashboard/" . $orderb2c->link;
                 $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
-                $qontakHandler = new QontakHandler();
-                $qontakHandler->sendMessage(
+                // $qontakHandle = new QontakHandler();
+                $fonnteServices = new FonnteServices();
+                // $qontakHandle->sendMessage(
+                //     "62" . $phone,
+                //     "DRIVER ASSIGNED",
+                //     Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
+                //     [
+                //         [
+                //             "key" => "1",
+                //             "value" => "link",
+                //             "value_text" => $link
+                //         ],
+                //     ]
+                // );
+                $fonnteServices->sendMessage(
                     "62" . $phone,
-                    "DRIVER ASSIGNED",
-                    Constant::QONTAK_TEMPLATE_ID_DRIVER_ASSIGNED,
-                    [
-                        [
-                            "key" => "1",
-                            "value" => "link",
-                            "value_text" => $link
-                        ],
-                    ]
+                    "Yay! Anda sudah mendapatkan driver. Cek lebih lengkap di sini! " . $link
                 );
             }
 
@@ -2144,30 +2227,51 @@ class OrderController extends Controller
                 // Sequence handling
                 // Otopickup
                 if ($identerprise == env('OP_IDENTERPRISE')) {
-                    $qontakHandler = new QontakHandler();
+                    // $qontakHandle = new QontakHandler();
+                    $fonnteServices = new FonnteServices();
 
                     switch ($OrderTasks->sequence) {
                         case Constant::OP_PICKUP_SEQUENCE:
                             $trx_id = $this->switchOrderConnection($identerprise)->where('idorder', $OrderTasks->order_idorder)->first()->trx_id;
 
                             // Mas Pulung
-                            $qontakHandler->sendMessage(
-                                "628159766379",
-                                "Mas Pulung",
-                                Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
-                                [
-                                    [
-                                        "key" => "1",
-                                        "value" => "id",
-                                        "value_text" => $trx_id
-                                    ],
-                                    [
-                                        "key" => "2",
-                                        "value" => "link",
-                                        "value_text" => "https://otoklixpickup.oper.co.id/tracking/" . $trx_id
-                                    ],
-                                ]
+                            // $qontakHandle->sendMessage(
+                            //     "628159766379",
+                            //     "Mas Pulung",
+                            //     Constant::QONTAK_TEMPLATE_OTOPICKUP_UPDATE,
+                            //     [
+                            //         [
+                            //             "key" => "1",
+                            //             "value" => "id",
+                            //             "value_text" => $trx_id
+                            //         ],
+                            //         [
+                            //             "key" => "2",
+                            //             "value" => "link",
+                            //             "value_text" => "https://otoklixpickup.oper.co.id/tracking/" . $trx_id
+                            //         ],
+                            //     ]
+                            // );
+
+                            // Mas Obiq
+                            $fonnteServices->sendMessage(
+                                "6287783109503",
+                                "OTOPICKUP - Update Link Status Order\n\n" .
+
+                                "Berikut update link status untuk order dengan ID transaksi {{1}}:\n\n" .
+
+                                "https://otoklixpickup.oper.co.id/tracking/" . $trx_id
                             );
+                            // Mas Pulung
+                            $fonnteServices->sendMessage(
+                                "628159766379",
+                                "OTOPICKUP - Update Link Status Order\n\n" .
+
+                                "Berikut update link status untuk order dengan ID transaksi {{1}}:\n\n" .
+
+                                "https://otoklixpickup.oper.co.id/tracking/" . $trx_id
+                            );
+
 
                             break;
                     }
@@ -2280,12 +2384,17 @@ class OrderController extends Controller
 
                         $customer_id = $order_b2c->customer_id;
                         $phone = CustomerB2C::where('id', $customer_id)->first()->phone;
-                        $qontakHandler = new QontakHandler();
-                        $qontakHandler->sendMessage(
+                        // $qontakHandle = new QontakHandler();
+                        $fonnteServices = new FonnteServices();
+                        // $qontakHandle->sendMessage(
+                        //     "62" . $phone,
+                        //     "Order Verified",
+                        //     Constant::QONTAK_TEMPLATE_VERIFIED,
+                        //     []
+                        // );
+                        $fonnteServices->sendMessage(
                             "62" . $phone,
-                            "Order Verified",
-                            Constant::QONTAK_TEMPLATE_VERIFIED,
-                            []
+                            "Pembayaran Anda berhasil terverifikasi. Terima kasih sudah menggunakan layanan OPER, kami harap perjalanan Anda menyenangkan. Mohon periksa kembali barang bawaan Anda dan sampai bertemu di perjalanan selanjutnya bersama OPER!"
                         );
                     }
 
